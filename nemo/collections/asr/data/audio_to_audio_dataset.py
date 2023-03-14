@@ -24,7 +24,7 @@ def get_audio_to_target_dataset(config: dict) -> audio_to_audio.AudioToTargetDat
     Returns:
         An instance of AudioToTargetDataset
     """
-    dataset = audio_to_audio.AudioToTargetDataset(
+    return audio_to_audio.AudioToTargetDataset(
         manifest_filepath=config['manifest_filepath'],
         sample_rate=config['sample_rate'],
         input_key=config['input_key'],
@@ -37,7 +37,6 @@ def get_audio_to_target_dataset(config: dict) -> audio_to_audio.AudioToTargetDat
         input_channel_selector=config.get('input_channel_selector', None),
         target_channel_selector=config.get('target_channel_selector', None),
     )
-    return dataset
 
 
 def get_audio_to_target_with_reference_dataset(config: dict) -> audio_to_audio.AudioToTargetWithReferenceDataset:
@@ -49,7 +48,7 @@ def get_audio_to_target_with_reference_dataset(config: dict) -> audio_to_audio.A
     Returns:
         An instance of AudioToTargetWithReferenceDataset
     """
-    dataset = audio_to_audio.AudioToTargetWithReferenceDataset(
+    return audio_to_audio.AudioToTargetWithReferenceDataset(
         manifest_filepath=config['manifest_filepath'],
         sample_rate=config['sample_rate'],
         input_key=config['input_key'],
@@ -62,11 +61,14 @@ def get_audio_to_target_with_reference_dataset(config: dict) -> audio_to_audio.A
         max_utts=config.get('max_utts', 0),
         input_channel_selector=config.get('input_channel_selector', None),
         target_channel_selector=config.get('target_channel_selector', None),
-        reference_channel_selector=config.get('reference_channel_selector', None),
-        reference_is_synchronized=config.get('reference_is_synchronized', True),
+        reference_channel_selector=config.get(
+            'reference_channel_selector', None
+        ),
+        reference_is_synchronized=config.get(
+            'reference_is_synchronized', True
+        ),
         reference_duration=config.get('reference_duration', None),
     )
-    return dataset
 
 
 def get_audio_to_target_with_embedding_dataset(config: dict) -> audio_to_audio.AudioToTargetWithEmbeddingDataset:
@@ -78,7 +80,7 @@ def get_audio_to_target_with_embedding_dataset(config: dict) -> audio_to_audio.A
     Returns:
         An instance of AudioToTargetWithEmbeddingDataset
     """
-    dataset = audio_to_audio.AudioToTargetWithEmbeddingDataset(
+    return audio_to_audio.AudioToTargetWithEmbeddingDataset(
         manifest_filepath=config['manifest_filepath'],
         sample_rate=config['sample_rate'],
         input_key=config['input_key'],
@@ -92,4 +94,3 @@ def get_audio_to_target_with_embedding_dataset(config: dict) -> audio_to_audio.A
         input_channel_selector=config.get('input_channel_selector', None),
         target_channel_selector=config.get('target_channel_selector', None),
     )
-    return dataset

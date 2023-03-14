@@ -46,6 +46,7 @@ The script outputs the following metrics:
 """
 
 
+
 import re
 from argparse import ArgumentParser
 
@@ -63,15 +64,15 @@ args = parser.parse_args()
 
 # Main code
 if __name__ == "__main__":
-    inputs = []
     references = []  # list(size=len(inputs)) of lists
     skip_ids = set()  # sentences ids to be skipped during evaluation
+    inputs = []
     with open(args.reference_file, "r", encoding="utf-8") as f:
         for line in f:
             multi_references = []
             parts = line.strip().split("\t")
             if len(parts) < 2 or len(parts) > 3:
-                raise ValueError("Bad format: " + line)
+                raise ValueError(f"Bad format: {line}")
             words = parts[0].split()
             inputs.append(words)
             if len(parts) == 3:  # there are non-trivial semiotic spans
@@ -96,9 +97,8 @@ if __name__ == "__main__":
                             break
                         for tr_variant in span_parts[1:]:
                             multi_references_updated.append(
-                                ref
-                                + " "
-                                + " ".join(inputs[-1][input_position:begin])  # copy needed words from input
+                                f"{ref} "
+                                + " ".join(inputs[-1][input_position:begin])
                                 + " "
                                 + tr_variant
                             )
@@ -106,7 +106,7 @@ if __name__ == "__main__":
                     multi_references_updated = []
                     input_position = end
                 for i in range(len(multi_references)):  # copy needed words from the input end
-                    multi_references[i] += " " + " ".join(inputs[-1][input_position : len(inputs[-1])])
+                    multi_references[i] += " " + " ".join(inputs[-1][input_position:])
             # the last reference added is the actual one
             multi_references.append(parts[1])
             references.append(multi_references)
@@ -123,7 +123,7 @@ if __name__ == "__main__":
                 predicted_tags.append([])
                 continue
             if len(parts) != 5:
-                raise ValueError("Bad format: " + line)
+                raise ValueError(f"Bad format: {line}")
             prediction, inp_str, tag_str, tags_with_swap_str, semiotic = parts
             predictions.append(prediction.casefold())
             tags = tag_str.split(" ")
@@ -135,12 +135,7 @@ if __name__ == "__main__":
 
     if len(inputs) != len(predictions) or len(inputs) != len(references):
         raise ValueError(
-            "Length mismatch: len(inputs)="
-            + str(len(inputs))
-            + "; len(predictions)="
-            + str(len(predictions))
-            + "; len(references)="
-            + str(len(references))
+            f"Length mismatch: len(inputs)={len(inputs)}; len(predictions)={len(predictions)}; len(references)={len(references)}"
         )
 
     refs_for_wer = []

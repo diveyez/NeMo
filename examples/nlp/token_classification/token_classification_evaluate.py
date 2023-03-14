@@ -66,7 +66,9 @@ def main(cfg: DictConfig) -> None:
     )
 
     if not hasattr(cfg.model, 'test_ds'):
-        raise ValueError(f'model.test_ds was not found in the config, skipping evaluation')
+        raise ValueError(
+            'model.test_ds was not found in the config, skipping evaluation'
+        )
 
     trainer = pl.Trainer(
         devices=1,
@@ -105,7 +107,7 @@ def main(cfg: DictConfig) -> None:
         model._cfg.dataset = cfg.model.dataset
 
         if not hasattr(cfg.model, 'test_ds'):
-            logging.error(f'model.test_ds was not found in the config, skipping evaluation')
+            logging.error('model.test_ds was not found in the config, skipping evaluation')
         elif model.prepare_test(trainer):
             model.setup_test_data(cfg.model.test_ds)
             trainer.test(model)

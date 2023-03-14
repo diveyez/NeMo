@@ -100,13 +100,15 @@ def main():
                     text = text.lower()
                 tok_text = " ".join([str(i + offset) for i in tokenizer.text_to_ids(text)])
                 if is_chain_builder:
-                    tok_text = f"line_{num_lines} " + tok_text
+                    tok_text = f"line_{num_lines} {tok_text}"
                 tok_text_list.append(tok_text)
                 num_lines += 1
 
     tok_texts = "\n".join(tok_text_list)
     del tok_text_list
-    logging.info("Finished processing all manifests ! Number of sentences : {}".format(num_lines))
+    logging.info(
+        f"Finished processing all manifests ! Number of sentences : {num_lines}"
+    )
 
     """ LM BUILDING """
     logging.info(f"Calling {args.lm_builder} ...")

@@ -36,7 +36,7 @@ try:
     from apex.transformer import parallel_state
 
     HAVE_APEX = True
-except (ImportError, ModuleNotFoundError):
+except ImportError:
     HAVE_APEX = False
 
 """

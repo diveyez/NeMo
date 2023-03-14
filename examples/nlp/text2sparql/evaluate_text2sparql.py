@@ -58,9 +58,9 @@ def main(cfg: DictConfig) -> None:
     with open(cfg.model.test_ds.filepath, "r", encoding='utf-8') as f:
         lines = f.readlines()
 
-    lines[0] = lines[0].strip() + f"\tpredictions\n"
+    lines[0] = f"{lines[0].strip()}\tpredictions\n"
     for i, res in enumerate(results[0]["texts"]):
-        lines[i + 1] = lines[i + 1].strip() + f"\t{res}\n"
+        lines[i + 1] = f"{lines[i + 1].strip()}\t{res}\n"
 
     savepath = os.path.join(cfg.exp_manager.exp_dir, os.path.basename(cfg.model.test_ds.filepath))
     with open(savepath, "w", encoding='utf-8') as f:

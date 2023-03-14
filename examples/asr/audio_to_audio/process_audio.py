@@ -189,7 +189,7 @@ def main(cfg: ProcessConfig) -> ProcessConfig:
         if cfg.audio_dir is not None:
             cfg.output_dir = os.path.dirname(os.path.join(cfg.audio_dir, '.')) + f'_processed_{model_name}'
         else:
-            cfg.output_dir = os.path.dirname(cfg.dataset_manifest) + f'_processed_{model_name}'
+            cfg.output_dir = f'{os.path.dirname(cfg.dataset_manifest)}_processed_{model_name}'
 
     # Compute output filename
     if cfg.output_filename is None:

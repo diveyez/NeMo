@@ -73,10 +73,12 @@ def get_metrics(manifest: str, pred_field="pred_text", phoneme_field="text", gra
         for phon_amb_indices_ in phon_amb_indices:
             refs.append(all_references[phon_amb_indices_])
             preds.append(all_preds[phon_amb_indices_])
-        pers = []
-        for ref_, pred_ in zip(refs, preds):
-            pers.append(word_error_rate(hypotheses=[pred_], references=[ref_], use_cer=True))
-
+        pers = [
+            word_error_rate(
+                hypotheses=[pred_], references=[ref_], use_cer=True
+            )
+            for ref_, pred_ in zip(refs, preds)
+        ]
         min_idx = pers.index(min(pers))
 
         phon_amb_indices.pop(min_idx)

@@ -45,13 +45,15 @@ def get_query_embedding(query, model):
         return_attention_mask=True,
     )
 
-    query_emb = model.forward(
+    return model.forward(
         input_ids=torch.LongTensor([model_input["input_ids"]]).to(device),
-        token_type_ids=torch.LongTensor([model_input["token_type_ids"]]).to(device),
-        attention_mask=torch.LongTensor([model_input["attention_mask"]]).to(device),
+        token_type_ids=torch.LongTensor([model_input["token_type_ids"]]).to(
+            device
+        ),
+        attention_mask=torch.LongTensor([model_input["attention_mask"]]).to(
+            device
+        ),
     )
-
-    return query_emb
 
 
 def query_index(
@@ -145,7 +147,7 @@ def main(cfg: DictConfig, restore: bool):
 
         for concept_id in output:
             concept_details = output[concept_id]
-            concept_id = "C" + str(concept_id).zfill(7)
+            concept_id = f"C{str(concept_id).zfill(7)}"
             print(concept_id, concept_details)
 
         print("----------------\n")

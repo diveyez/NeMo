@@ -34,8 +34,7 @@ python megatron_change_num_partitions.py \
 
 
 def merge_partition(model, partitions, write_path=None):
-    idx = 0
-    for name, param in model.named_parameters():
+    for idx, (name, param) in enumerate(model.named_parameters()):
         if param.shape == partitions[0][idx].shape:
             concated = partitions[0][idx].data
         elif param.shape[0] == partitions[0][idx].shape[0]:
@@ -55,8 +54,6 @@ def merge_partition(model, partitions, write_path=None):
                     f"Can not handle parameter {name}, required shape: {param.shape}, merged shape: {concated.shape}."
                 )
         param.data = concated
-        idx += 1
-
     if write_path is not None:
         model.save_to(write_path)
 
@@ -78,48 +75,41 @@ def split_partition(model, partitions, tp_size, write_path=None, megatron_legacy
 
     app_state.tensor_model_parallel_rank = tp_size - 1
 
-    idx = 0
     splits = []
-    for param_name, param in model.named_parameters():
+    for idx, (param_name, param) in enumerate(model.named_parameters()):
         if param.shape == partitions[0][idx].shape:
             split = [partitions[0][idx].data] * tp_size
         elif param.shape[0] == partitions[0][idx].shape[0]:
             split = torch.split(partitions[0][idx].data, param.shape[-1], dim=-1)
+        elif 'query_key_value.weight' in param_name and megatron_legacy:
+            split_dim = partitions[0][idx].data.shape[0]
+            if split_dim % (tp_size * 3) != 0:
+                raise ValueError(
+                    f"Can not split Q,K,V parameter {param_name} with shape {param.shape} into tensor parallel size {tp_size}. Not divisible by {tp_size * 3}."
+                )
+            tp_qkv_splits = torch.chunk(partitions[0][idx].data, tp_size * 3, dim=0)
+            split = []
+            for i in range(tp_size):
+                tp_qkv = torch.cat([tp_qkv_splits[item] for item in range(i, tp_size * 3, tp_size)])
+                split.append(tp_qkv)
+        elif 'key_value.weight' in param_name and megatron_legacy:
+            split_dim = partitions[0][idx].data.shape[0]
+            if split_dim % (tp_size * 2) != 0:
+                raise ValueError(
+                    f"Can not split K,V parameter {param_name} with shape {param.shape} into tensor parallel size {tp_size}. Not divisible by {tp_size * 2}."
+                )
+            tp_qkv_splits = torch.chunk(partitions[0][idx].data, tp_size * 2, dim=0)
+            split = []
+            for i in range(tp_size):
+                tp_qkv = torch.cat([tp_qkv_splits[item] for item in range(i, tp_size * 2, tp_size)])
+                split.append(tp_qkv)
         else:
-            # For T5-converted weights, the splitting needs to be strided such that q,k,v weights are bunched together on each tensor-parallel rank.
-            if 'query_key_value.weight' in param_name and megatron_legacy:
-                split_dim = partitions[0][idx].data.shape[0]
-                if split_dim % (tp_size * 3) != 0:
-                    raise ValueError(
-                        f"Can not split Q,K,V parameter {param_name} with shape {param.shape} into tensor parallel size {tp_size}. Not divisible by {tp_size * 3}."
-                    )
-                tp_qkv_splits = torch.chunk(partitions[0][idx].data, tp_size * 3, dim=0)
-                split = []
-                for i in range(tp_size):
-                    tp_qkv = torch.cat([tp_qkv_splits[item] for item in range(i, tp_size * 3, tp_size)])
-                    split.append(tp_qkv)
-            elif 'key_value.weight' in param_name and megatron_legacy:
-                split_dim = partitions[0][idx].data.shape[0]
-                if split_dim % (tp_size * 2) != 0:
-                    raise ValueError(
-                        f"Can not split K,V parameter {param_name} with shape {param.shape} into tensor parallel size {tp_size}. Not divisible by {tp_size * 2}."
-                    )
-                tp_qkv_splits = torch.chunk(partitions[0][idx].data, tp_size * 2, dim=0)
-                split = []
-                for i in range(tp_size):
-                    tp_qkv = torch.cat([tp_qkv_splits[item] for item in range(i, tp_size * 2, tp_size)])
-                    split.append(tp_qkv)
-            # Regular split for Megatron and NeMo-Megatron models.
-            else:
-                split = torch.split(partitions[0][idx].data, param.shape[0], dim=0)
+            split = torch.split(partitions[0][idx].data, param.shape[0], dim=0)
         splits.append(split)
-        idx += 1
-
     for i in range(tp_size - 1, -1, -1):
         app_state.tensor_model_parallel_rank = i
 
-        idx = 0
-        for name, param in model.named_parameters():
+        for idx, (name, param) in enumerate(model.named_parameters()):
             split_val = splits[idx][i].clone()
 
             if param.shape != split_val.shape:
@@ -140,8 +130,6 @@ def split_partition(model, partitions, tp_size, write_path=None, megatron_legacy
                     )
 
             param.data = split_val
-            idx += 1
-
         if write_path is not None:
             model.save_to(write_path)
 
@@ -204,7 +192,6 @@ def main():
             )
 
         model.cfg.tensor_model_parallel_size = 1
-        app_state.model_parallel_size = 1
         trainer = Trainer(devices=1, strategy=NLPDDPStrategy(), accelerator="cpu", precision=precision)
         if args.tokenizer_model_path is not None:
             model.cfg.tokenizer.model = args.tokenizer_model_path
@@ -216,9 +203,9 @@ def main():
         else:
             merge_partition(model, partitions, args.target_file)
     else:
-        app_state.model_parallel_size = 1
         model = cls.restore_from(restore_path=args.model_file, trainer=trainer, map_location=torch.device("cpu"))
 
+    app_state.model_parallel_size = 1
     if tgt_tp_size > 1:
         partitions = []
         params = [p for _, p in model.named_parameters()]

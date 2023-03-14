@@ -80,8 +80,7 @@ def get_args():
         action='store_true',
         help="If set to True, logs scores for each disambiguated word in disambiguation_logs.txt.",
     )
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def load_and_prepare_audio(aligner, audio_path, target_sr, device):
@@ -127,8 +126,6 @@ def disambiguate_candidates(aligner, text, spec, spec_len, confidence, device, h
 
         # Check if word needs to be disambiguated
         if word in heteronyms:
-            has_heteronym = True
-
             # Add candidate for each ambiguous pronunciation
             word_candidates = []
             candidate_prons_and_lengths = []
@@ -141,9 +138,8 @@ def disambiguate_candidates(aligner, text, spec, spec_len, confidence, device, h
                 word_candidates.append(candidate_tokens)
                 candidate_prons_and_lengths.append((pron, len(pron)))
 
-            ### Inference ###
             num_candidates = len(word_candidates)
-
+            has_heteronym = True
             # If only one candidate, just convert and continue
             if num_candidates == 1:
                 has_heteronym = False
@@ -213,16 +209,15 @@ def disambiguate_candidates(aligner, text, spec, spec_len, confidence, device, h
                 log_file.write(f"best candidate: {best_candidate} (confidence: {disamb_conf})\n")
 
             result_g2p.append(f"<{' '.join(best_candidate)}>")
+        elif re.search("[a-zA-Z]", word) is None:
+            # Punctuation or space
+            result_g2p.append(f"<{word}>")
+        elif word in aligner_g2p.phoneme_dict:
+            # Take default pronunciation for everything else in the dictionary
+            result_g2p.append(f"<{' '.join(aligner_g2p.phoneme_dict[word][0])}>")
         else:
-            if re.search("[a-zA-Z]", word) is None:
-                # Punctuation or space
-                result_g2p.append(f"<{word}>")
-            elif word in aligner_g2p.phoneme_dict:
-                # Take default pronunciation for everything else in the dictionary
-                result_g2p.append(f"<{' '.join(aligner_g2p.phoneme_dict[word][0])}>")
-            else:
-                # OOV
-                result_g2p.append(f"<{' '.join(aligner_g2p(word))}>")
+            # OOV
+            result_g2p.append(f"<{' '.join(aligner_g2p(word))}>")
 
         # Advance to phoneme index of next word
         word_start_idx += g2p_default_len

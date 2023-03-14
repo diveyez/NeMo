@@ -85,8 +85,7 @@ def get_args():
     parser.add_argument("--local_rank", type=int, required=False, default=os.getenv('LOCAL_RANK', -1))
     parser.add_argument("--bcp", action="store_true", help="Whether on BCP platform")
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def convert(local_rank, rank, world_size, args):
@@ -107,14 +106,13 @@ def convert(local_rank, rank, world_size, args):
     if args.pipeline_model_parallel_size > 1 and args.model_type in ['t5', 'bart', 'nmt']:
         if args.pipeline_model_parallel_split_rank is not None:
             app_state.pipeline_model_parallel_split_rank = args.pipeline_model_parallel_split_rank
+        elif args.pipeline_model_parallel_size % 2 == 0:
+            # If split rank is not set, then we set it to be pipeline_model_parallel_size // 2 - this is because in most cases we have the same number of enc/dec layers.
+            app_state.pipeline_model_parallel_split_rank = args.pipeline_model_parallel_size // 2
         else:
-            if args.pipeline_model_parallel_size % 2 != 0:
-                raise ValueError(
-                    f"Pipeline model parallel size {args.pipeline_model_parallel_size} must be even if split rank is not specified."
-                )
-            else:
-                # If split rank is not set, then we set it to be pipeline_model_parallel_size // 2 - this is because in most cases we have the same number of enc/dec layers.
-                app_state.pipeline_model_parallel_split_rank = args.pipeline_model_parallel_size // 2
+            raise ValueError(
+                f"Pipeline model parallel size {args.pipeline_model_parallel_size} must be even if split rank is not specified."
+            )
     else:
         app_state.pipeline_model_parallel_split_rank = None
 

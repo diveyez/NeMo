@@ -156,12 +156,13 @@ def display_analysis_table(df_analysis: pd.DataFrame, key_info: dict):
     column_lengths = {x: max(len(x), df_analysis[x].map(str).apply(len).max()) for x in df_analysis.columns}
 
     print(' | '.join([f'{x:^{column_lengths[x]}}' for x in df_analysis.columns]))
-    print('-' * sum([column_lengths[x] + 3 for x in df_analysis.columns]))
+    print('-' * sum(column_lengths[x] + 3 for x in df_analysis.columns))
 
     for idx in range(len(df_analysis)):
-        row_str = []
-        for column in df_analysis.columns:
-            row_str.append(f'{df_analysis.iloc[idx][column]:^{column_lengths[column]}}')
+        row_str = [
+            f'{df_analysis.iloc[idx][column]:^{column_lengths[column]}}'
+            for column in df_analysis.columns
+        ]
         print(' | '.join(row_str))
 
 
@@ -218,7 +219,9 @@ def get_best_config(
     hyperparamter_cols = ADAPTER_HYPERPARAMTER_COLUMNS if exp_type == 'adapters' else FINETUNING_HYPERPARAMETER_COLUMNS
 
     # Columns to display in the analysis table
-    analysis_columns = list(set([key_info['name'], TEST_WER_COLUMN, ORIGINAL_TEST_WER_COLUMN]))
+    analysis_columns = list(
+        {key_info['name'], TEST_WER_COLUMN, ORIGINAL_TEST_WER_COLUMN}
+    )
 
     df_analyze = df_exp.drop(
         columns=[
@@ -238,7 +241,9 @@ def get_best_config(
 
         # Sort the values by the key in order to get the top-k results
         df_category_mean.sort_values(
-            by=key_info['name'], ascending=True if key_info['attribute'].__qualname__ == 'min' else False, inplace=True
+            by=key_info['name'],
+            ascending=key_info['attribute'].__qualname__ == 'min',
+            inplace=True,
         )
 
         print('=' * len(category))

@@ -63,11 +63,13 @@ def prepare_subcorpora_from_data() -> None:
     """
     semiotic_vcb = Counter()
     cache_vcb = {}
-    filenames = []
-    for fn in listdir(args.data_dir + "/train"):
-        filenames.append(args.data_dir + "/train/" + fn)
-    for fn in listdir(args.data_dir + "/dev"):
-        filenames.append(args.data_dir + "/dev/" + fn)
+    filenames = [
+        f"{args.data_dir}/train/{fn}"
+        for fn in listdir(f"{args.data_dir}/train")
+    ]
+    filenames.extend(
+        f"{args.data_dir}/dev/{fn}" for fn in listdir(f"{args.data_dir}/dev")
+    )
     for fn in filenames:
         with open(fn, "r", encoding="utf-8") as f:
             # Loop through each line of the file
@@ -76,7 +78,7 @@ def prepare_subcorpora_from_data() -> None:
                 if len(parts) < 3:
                     continue
                 if len(parts) != 3:
-                    raise ValueError("Expect 3 parts, got " + str(len(parts)))
+                    raise ValueError(f"Expect 3 parts, got {len(parts)}")
                 semiotic_class, written, spoken = parts[0], parts[1].strip(), parts[2].strip()
                 if spoken == "<self>":
                     continue
@@ -96,7 +98,7 @@ def prepare_subcorpora_from_data() -> None:
     for sem in semiotic_vcb:
         classdir = join(args.out_dir, sem)
         if not isdir(classdir):
-            raise ValueError("No such directory: " + classdir)
+            raise ValueError(f"No such directory: {classdir}")
         print(classdir, " has ", semiotic_vcb[sem], " instances")
         with open(join(classdir, "run.sh"), "w") as out:
             out.write("GIZA_PATH=\"" + args.giza_dir + "\"\n")
@@ -114,17 +116,14 @@ def prepare_subcorpora_from_data() -> None:
             out.write(
                 "${GIZA_PATH}/GIZA++ -S dst.vcb -T src.vcb -C dst_src.snt -coocurrencefile dst_src.cooc -p0 0.98 -o GIZA++reverse >& GIZA++reverse.log\n"
             )
-        out_src = open(join(classdir, "src"), 'w', encoding="utf-8")
-        out_dst = open(join(classdir, "dst"), 'w', encoding="utf-8")
-        out_freq = open(join(classdir, "freq"), 'w', encoding="utf-8")
-        for src, dst in cache_vcb[sem]:
-            freq = cache_vcb[sem][(src, dst)]
-            out_src.write(src + "\n")
-            out_dst.write(dst + "\n")
-            out_freq.write(str(freq) + "\n")
-        out_freq.close()
-        out_dst.close()
-        out_src.close()
+        with open(join(classdir, "src"), 'w', encoding="utf-8") as out_src:
+            with open(join(classdir, "dst"), 'w', encoding="utf-8") as out_dst:
+                with open(join(classdir, "freq"), 'w', encoding="utf-8") as out_freq:
+                    for src, dst in cache_vcb[sem]:
+                        freq = cache_vcb[sem][(src, dst)]
+                        out_src.write(src + "\n")
+                        out_dst.write(dst + "\n")
+                        out_freq.write(str(freq) + "\n")
 
 
 # Main code

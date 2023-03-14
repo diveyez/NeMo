@@ -121,11 +121,13 @@ def main():
     if torch.cuda.is_available():
         tts_input = tts_input.cuda()
     specs = tts_model_spec.generate_spectrogram(tokens=tts_input)
-    audio = []
     step = ceil(len(specs) / 4)
-    for i in range(4):
-        audio.append(tts_model_vocoder.convert_spectrogram_to_audio(spec=specs[i * step : i * step + step]))
-
+    audio = [
+        tts_model_vocoder.convert_spectrogram_to_audio(
+            spec=specs[i * step : i * step + step]
+        )
+        for i in range(4)
+    ]
     audio = [item for sublist in audio for item in sublist]
     audio_file_paths = []
     # Save audio

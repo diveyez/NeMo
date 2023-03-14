@@ -72,9 +72,9 @@ def get_embeddings(speaker_model, manifest_file, batch_size=1, embedding_dir='./
     prefix = manifest_file.split('/')[-1].rsplit('.', 1)[-2]
 
     name = os.path.join(embedding_dir, prefix)
-    embeddings_file = name + '_embeddings.pkl'
+    embeddings_file = f'{name}_embeddings.pkl'
     pkl.dump(out_embeddings, open(embeddings_file, 'wb'))
-    logging.info("Saved embedding files to {}".format(embedding_dir))
+    logging.info(f"Saved embedding files to {embedding_dir}")
 
 
 def main():
@@ -109,7 +109,7 @@ def main():
         speaker_model = EncDecSpeakerLabelModel.load_from_checkpoint(checkpoint_path=args.model_path)
     else:
         speaker_model = EncDecSpeakerLabelModel.from_pretrained(model_name="titanet_large")
-        logging.info(f"using pretrained titanet_large speaker model from NGC")
+        logging.info("using pretrained titanet_large speaker model from NGC")
 
     device = 'cuda'
     if not torch.cuda.is_available():

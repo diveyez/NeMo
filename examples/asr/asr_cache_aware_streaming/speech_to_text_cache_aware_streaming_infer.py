@@ -91,13 +91,7 @@ def extract_transcriptions(hyps):
         The transcribed_texts returned by CTC and RNNT models are different.
         This method would extract and return the text section of the hypothesis.
     """
-    if isinstance(hyps[0], Hypothesis):
-        transcriptions = []
-        for hyp in hyps:
-            transcriptions.append(hyp.text)
-    else:
-        transcriptions = hyps
-    return transcriptions
+    return [hyp.text for hyp in hyps] if isinstance(hyps[0], Hypothesis) else hyps
 
 
 def calc_drop_extra_pre_encoded(asr_model, step_num, pad_and_drop_preencoded):
@@ -300,10 +294,7 @@ def main():
 
     # chunk_size is set automatically for models trained for streaming. For models trained for offline mode with full context, we need to pass the chunk_size explicitly.
     if args.chunk_size > 0:
-        if args.shift_size < 0:
-            shift_size = args.chunk_size
-        else:
-            shift_size = args.shift_size
+        shift_size = args.chunk_size if args.shift_size < 0 else args.shift_size
         asr_model.encoder.setup_streaming_params(
             chunk_size=args.chunk_size, left_chunks=args.left_chunks, shift_size=shift_size
         )

@@ -154,7 +154,9 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
     else:
         device = [cfg.cuda]
         accelerator = 'gpu'
-    map_location = torch.device('cuda:{}'.format(device[0]) if accelerator == 'gpu' else 'cpu')
+    map_location = torch.device(
+        f'cuda:{device[0]}' if accelerator == 'gpu' else 'cpu'
+    )
     logging.info(f"Inference will be done on device : {device}")
 
     asr_model, model_name = setup_model(cfg, map_location)
@@ -188,10 +190,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
     # Change Decoding Config
     decoding_cfg = asr_model.cfg.decoding
     with open_dict(decoding_cfg):
-        if cfg.stateful_decoding:
-            decoding_cfg.strategy = "greedy"
-        else:
-            decoding_cfg.strategy = "greedy_batch"
+        decoding_cfg.strategy = "greedy" if cfg.stateful_decoding else "greedy_batch"
         decoding_cfg.preserve_alignments = True  # required to compute the middle token for transducers.
         decoding_cfg.fused_batch_size = -1  # temporarily stop fused batch during inference.
 

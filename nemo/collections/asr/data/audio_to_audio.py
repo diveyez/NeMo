@@ -604,11 +604,8 @@ class ASRAudioProcessor:
             Numpy array obtained by concatenating the elements of the list
             along the channel dimension (axis=0).
         """
-        if not isinstance(signal, list):
+        if not isinstance(signal, list) or len(signal) == 0:
             # Nothing to do there
-            return signal
-        elif len(signal) == 0:
-            # Nothing to do, return as is
             return signal
         elif len(signal) == 1:
             # Nothing to concatenate, return the original format
@@ -636,8 +633,7 @@ class ASRAudioProcessor:
         Returns:
             List of durations in seconds.
         """
-        duration = [librosa.get_duration(filename=f) for f in flatten(audio_files)]
-        return duration
+        return [librosa.get_duration(filename=f) for f in flatten(audio_files)]
 
     def load_embedding(self, example: collections.Audio.OUTPUT_TYPE) -> Dict[str, torch.Tensor]:
         """Given an example, load embedding from `example.audio_files[embedding]`
@@ -650,7 +646,7 @@ class ASRAudioProcessor:
             An dictionary of embedding keys and their tensors.
         """
         output = OrderedDict()
-        for idx, signal in enumerate(self.embedding_setup.signals):
+        for signal in self.embedding_setup.signals:
             embedding_file = example.audio_files[signal]
             embedding = self.load_embedding_vector(embedding_file)
             output[signal] = torch.tensor(embedding)
@@ -667,12 +663,11 @@ class ASRAudioProcessor:
         Returns:
             Array loaded from filepath.
         """
-        if filepath.endswith('.npy'):
-            with open(filepath, 'rb') as f:
-                embedding = np.load(f)
-        else:
+        if not filepath.endswith('.npy'):
             raise RuntimeError(f'Unknown embedding file format in file: {filepath}')
 
+        with open(filepath, 'rb') as f:
+            embedding = np.load(f)
         return embedding
 
 
@@ -750,9 +745,7 @@ class BaseAudioDataset(Dataset):
             ```
         """
         example = self.collection[index]
-        output = self.audio_processor.process(example=example)
-
-        return output
+        return self.audio_processor.process(example=example)
 
     def __len__(self) -> int:
         """Return the number of examples in the dataset.

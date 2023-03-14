@@ -149,11 +149,11 @@ if __name__ == "__main__":
     if args.dataset != 'tatoeba':
         raise ValueError("Unsupported dataset.")
 
-    logging.info(f'Downloading tatoeba dataset')
+    logging.info('Downloading tatoeba dataset')
     tatoeba_dataset = os.path.join(args.data_dir, 'sentences.csv')
     __maybe_download_file(tatoeba_dataset, args.dataset)
 
-    logging.info(f'Processing English sentences...')
+    logging.info('Processing English sentences...')
     clean_eng_sentences = os.path.join(args.data_dir, 'clean_eng_sentences.txt')
     __process_english_sentences(
         tatoeba_dataset, clean_eng_sentences, args.percent_to_cut, args.num_lines_to_combine, args.num_samples
@@ -163,11 +163,11 @@ if __name__ == "__main__":
     dev_file = os.path.join(args.data_dir, 'dev.txt')
 
     logging.info(
-        f'Splitting the {args.dataset} dataset into train and dev sets' + ' and creating labels and text files'
+        f'Splitting the {args.dataset} dataset into train and dev sets and creating labels and text files'
     )
     __split_into_train_dev(clean_eng_sentences, train_file, dev_file, args.percent_dev)
 
-    logging.info(f'Creating text and label files for training')
+    logging.info('Creating text and label files for training')
     create_text_and_labels(args.data_dir, os.path.join(args.data_dir, 'train.txt'))
     create_text_and_labels(args.data_dir, os.path.join(args.data_dir, 'dev.txt'))
 

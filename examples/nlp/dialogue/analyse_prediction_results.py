@@ -28,31 +28,27 @@ def read_jsonl(filename):
 
 
 def get_incorrect_labels(docs):
-    incorrect_labels_docs = []
-    for doc in docs:
-        if doc["ground_truth_labels"] != doc["generated_labels"]:
-            incorrect_labels_docs.append(
-                {
-                    "input": doc["input"],
-                    "ground_truth_labels": doc["ground_truth_labels"],
-                    "generated_labels": doc["generated_labels"],
-                }
-            )
-    return incorrect_labels_docs
+    return [
+        {
+            "input": doc["input"],
+            "ground_truth_labels": doc["ground_truth_labels"],
+            "generated_labels": doc["generated_labels"],
+        }
+        for doc in docs
+        if doc["ground_truth_labels"] != doc["generated_labels"]
+    ]
 
 
 def get_incorrect_slots(docs):
-    incorrect_slots_docs = []
-    for doc in docs:
-        if doc["ground_truth_slots"] != doc["generated_slots"]:
-            incorrect_slots_docs.append(
-                {
-                    "input": doc["input"],
-                    "ground_truth_slots": doc["ground_truth_slots"],
-                    "generated_slots": doc["generated_slots"],
-                }
-            )
-    return incorrect_slots_docs
+    return [
+        {
+            "input": doc["input"],
+            "ground_truth_slots": doc["ground_truth_slots"],
+            "generated_slots": doc["generated_slots"],
+        }
+        for doc in docs
+        if doc["ground_truth_slots"] != doc["generated_slots"]
+    ]
 
 
 def sort_by_f1(docs):
@@ -94,8 +90,8 @@ def classification_main(filename):
     incorrect_labels_docs = get_incorrect_labels(docs)
     incorrect_slots_docs = get_incorrect_slots(docs)
 
-    print("{} / {} have incorrect labels".format(len(incorrect_labels_docs), len(docs)))
-    print("{} / {} have incorrect slots".format(len(incorrect_slots_docs), len(docs)))
+    print(f"{len(incorrect_labels_docs)} / {len(docs)} have incorrect labels")
+    print(f"{len(incorrect_slots_docs)} / {len(docs)} have incorrect slots")
 
     for doc in incorrect_labels_docs:
         print(doc)

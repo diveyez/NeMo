@@ -49,7 +49,7 @@ def main():
 
     # Get collections directory.
     colletions_dir = os.path.dirname(nemo.collections.__file__)
-    logging.info('Analysing collections in `{}`'.format(colletions_dir))
+    logging.info(f'Analysing collections in `{colletions_dir}`')
 
     # Generate list of NeMo collections - from the list of collection subfolders.
     collections = {}
@@ -59,7 +59,7 @@ def main():
             continue
         # Check if it is a directory.
         if os.path.isdir(os.path.join(colletions_dir, sub_dir)):
-            collections[sub_dir] = "nemo.collections." + sub_dir
+            collections[sub_dir] = f"nemo.collections.{sub_dir}"
 
     output_list = []
     # Iterate over all collections.
@@ -67,7 +67,7 @@ def main():
         # Try to get module specification.
         module_spec = importlib.util.find_spec(val)
         if module_spec is None:
-            logging.warning("  * Failed to process `{}`".format(val))
+            logging.warning(f"  * Failed to process `{val}`")
         else:
             try:
                 # Import the module from the module specification.
@@ -75,15 +75,15 @@ def main():
                 module_spec.loader.exec_module(module)
                 # Add to list.
                 output_list.append(process_collection(key, module))
-                logging.info("  * Processed `{}`".format(val))
+                logging.info(f"  * Processed `{val}`")
             except AttributeError:
-                logging.warning("  * Failed to process `{}`".format(val))
+                logging.warning(f"  * Failed to process `{val}`")
 
     # Export to JSON.
     with open(args.filename, 'w', encoding='utf-8') as outfile:
         json.dump(output_list, outfile)
 
-    logging.info('Finshed the analysis, results exported to `{}`.'.format(args.filename))
+    logging.info(f'Finshed the analysis, results exported to `{args.filename}`.')
 
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@
 Converts BERT NeMo0.* checkpoints to NeMo1.0 format.
 """
 
+
 from argparse import ArgumentParser
 
 import torch
@@ -50,12 +51,12 @@ for k in bert_in:
     new_dict[new_name] = bert_in[k]
 
 for k in tok_in:
-    new_name = "mlm_classifier." + k
+    new_name = f"mlm_classifier.{k}"
     new_dict[new_name] = tok_in[k]
 
 if args.bert_sequence_classifier:
     for k in seq_in:
-        new_name = "nsp_classifier." + k
+        new_name = f"nsp_classifier.{k}"
         new_dict[new_name] = seq_in[k]
 
 torch.save(new_model, args.output_path)

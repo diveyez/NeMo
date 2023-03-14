@@ -21,16 +21,16 @@ from nemo.utils import logging
 
 class SquadDownloader:
     def __init__(self, save_path):
-        self.save_path = save_path + '/squad'
+        self.save_path = f'{save_path}/squad'
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
 
-        if not os.path.exists(self.save_path + '/v1.1'):
-            os.makedirs(self.save_path + '/v1.1')
+        if not os.path.exists(f'{self.save_path}/v1.1'):
+            os.makedirs(f'{self.save_path}/v1.1')
 
-        if not os.path.exists(self.save_path + '/v2.0'):
-            os.makedirs(self.save_path + '/v2.0')
+        if not os.path.exists(f'{self.save_path}/v2.0'):
+            os.makedirs(f'{self.save_path}/v2.0')
 
         self.download_urls = {
             'https://rajpurkar.github.io/SQuAD-explorer' '/dataset/train-v1.1.json': 'v1.1/train-v1.1.json',
@@ -45,11 +45,11 @@ class SquadDownloader:
             file = self.download_urls[item]
 
             logging.info('Downloading: %s', url)
-            if os.path.isfile(self.save_path + '/' + file):
+            if os.path.isfile(f'{self.save_path}/{file}'):
                 logging.info('** Download file already exists, skipping download')
             else:
                 response = urllib.request.urlopen(url)
-                with open(self.save_path + '/' + file, "wb") as handle:
+                with open(f'{self.save_path}/{file}', "wb") as handle:
                     handle.write(response.read())
 
 

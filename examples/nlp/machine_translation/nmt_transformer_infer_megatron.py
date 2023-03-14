@@ -22,6 +22,7 @@ USAGE Example:
 """
 
 
+
 import os
 
 from omegaconf.omegaconf import OmegaConf, open_dict
@@ -40,7 +41,7 @@ try:
     from apex.transformer.pipeline_parallel.utils import _reconfigure_microbatch_calculator
 
     HAVE_APEX = True
-except (ImportError, ModuleNotFoundError):
+except ImportError:
     ModelType = ApexGuardDefaults()
     HAVE_APEX = False
 

@@ -51,9 +51,10 @@ def get_scale_mapping_list(uniq_timestamps):
             range of the longer segments. At the same time, each row contains N numbers of indices where N is number
             of segments in the base-scale (i.e., the finest scale).
     """
-    timestamps_in_scales = []
-    for key, val in uniq_timestamps['scale_dict'].items():
-        timestamps_in_scales.append(torch.tensor(val['time_stamps']))
+    timestamps_in_scales = [
+        torch.tensor(val['time_stamps'])
+        for key, val in uniq_timestamps['scale_dict'].items()
+    ]
     session_scale_mapping_list = get_argmin_mat(timestamps_in_scales)
     scale_mapping_argmat = [[] for _ in range(len(uniq_timestamps['scale_dict'].keys()))]
     for scale_idx in range(len(session_scale_mapping_list)):
@@ -95,8 +96,7 @@ def extract_seg_info_from_rttm(uniq_id, rttm_lines, mapping_dict=None, target_sp
             end_list.append(end)
             stt_list.append(start)
             speaker_list.append(speaker)
-    rttm_tup = (stt_list, end_list, speaker_list)
-    return rttm_tup
+    return stt_list, end_list, speaker_list
 
 
 def assign_frame_level_spk_vector(rttm_timestamps, round_digits, frame_per_sec, target_spks, min_spks=2):
@@ -122,21 +122,20 @@ def assign_frame_level_spk_vector(rttm_timestamps, round_digits, frame_per_sec, 
     stt_list, end_list, speaker_list = rttm_timestamps
     if len(speaker_list) == 0:
         return None
-    else:
-        sorted_speakers = sorted(list(set(speaker_list)))
-        total_fr_len = int(max(end_list) * (10 ** round_digits))
-        spk_num = max(len(sorted_speakers), min_spks)
-        speaker_mapping_dict = {rttm_key: x_int for x_int, rttm_key in enumerate(sorted_speakers)}
-        fr_level_target = torch.zeros(total_fr_len, spk_num)
+    sorted_speakers = sorted(list(set(speaker_list)))
+    total_fr_len = int(max(end_list) * (10 ** round_digits))
+    spk_num = max(len(sorted_speakers), min_spks)
+    speaker_mapping_dict = {rttm_key: x_int for x_int, rttm_key in enumerate(sorted_speakers)}
+    fr_level_target = torch.zeros(total_fr_len, spk_num)
 
         # If RTTM is not provided, then there is no speaker mapping dict in target_spks.
         # Thus, return a zero-filled tensor as a placeholder.
-        for count, (stt, end, spk_rttm_key) in enumerate(zip(stt_list, end_list, speaker_list)):
-            stt, end = round(stt, round_digits), round(end, round_digits)
-            spk = speaker_mapping_dict[spk_rttm_key]
-            stt_fr, end_fr = int(round(stt, 2) * frame_per_sec), int(round(end, round_digits) * frame_per_sec)
-            fr_level_target[stt_fr:end_fr, spk] = 1
-        return fr_level_target
+    for stt, end, spk_rttm_key in zip(stt_list, end_list, speaker_list):
+        stt, end = round(stt, round_digits), round(end, round_digits)
+        spk = speaker_mapping_dict[spk_rttm_key]
+        stt_fr, end_fr = int(round(stt, 2) * frame_per_sec), int(round(end, round_digits) * frame_per_sec)
+        fr_level_target[stt_fr:end_fr, spk] = 1
+    return fr_level_target
 
 
 class _AudioMSDDTrainDataset(Dataset):
@@ -177,7 +176,7 @@ class _AudioMSDDTrainDataset(Dataset):
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
         """Returns definitions of module output ports."""
-        output_types = {
+        return {
             "features": NeuralType(('B', 'T'), AudioSignal()),
             "feature_length": NeuralType(('B'), LengthsType()),
             "ms_seg_timestamps": NeuralType(('B', 'C', 'T', 'D'), LengthsType()),
@@ -186,8 +185,6 @@ class _AudioMSDDTrainDataset(Dataset):
             "scale_mapping": NeuralType(('B', 'C', 'T'), LengthsType()),
             "targets": NeuralType(('B', 'T', 'C'), ProbsType()),
         }
-
-        return output_types
 
     def __init__(
         self,
@@ -262,7 +259,7 @@ class _AudioMSDDTrainDataset(Dataset):
                 if seg_idx in uniq_scale_mapping[scale_index]:
                     seg_clus_label = mode(base_scale_clus_label[uniq_scale_mapping[scale_index] == seg_idx])
                 else:
-                    seg_clus_label = 0 if len(new_clus_label) == 0 else new_clus_label[-1]
+                    seg_clus_label = new_clus_label[-1] if new_clus_label else 0
                 new_clus_label.append(seg_clus_label)
             per_scale_clus_label.extend(new_clus_label)
         per_scale_clus_label = torch.tensor(per_scale_clus_label)
@@ -365,8 +362,7 @@ class _AudioMSDDTrainDataset(Dataset):
         bare_uniq_id = os.path.splitext(os.path.basename(sample.rttm_file))[0]
         offset = str(int(round(sample.offset, deci) * pow(10, deci)))
         endtime = str(int(round(sample.offset + sample.duration, deci) * pow(10, deci)))
-        uniq_id = f"{bare_uniq_id}_{offset}_{endtime}"
-        return uniq_id
+        return f"{bare_uniq_id}_{offset}_{endtime}"
 
     def get_ms_seg_timestamps(self, sample):
         """
@@ -388,9 +384,7 @@ class _AudioMSDDTrainDataset(Dataset):
         ms_seg_counts = [0 for _ in range(self.scale_n)]
         for scale_idx in range(self.scale_n):
             scale_ts_list = []
-            for k, (seg_stt, seg_end) in enumerate(
-                self.multiscale_timestamp_dict[uniq_id]["scale_dict"][scale_idx]["time_stamps"]
-            ):
+            for seg_stt, seg_end in self.multiscale_timestamp_dict[uniq_id]["scale_dict"][scale_idx]["time_stamps"]:
                 stt, end = (
                     int((seg_stt - sample.offset) * self.frame_per_sec),
                     int((seg_end - sample.offset) * self.frame_per_sec),
@@ -461,15 +455,16 @@ class _AudioMSDDInferDataset(Dataset):
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
         """Returns definitions of module output ports."""
-        output_types = OrderedDict(
+        return OrderedDict(
             {
                 "ms_emb_seq": NeuralType(('B', 'T', 'C', 'D'), SpectrogramType()),
                 "length": NeuralType(tuple('B'), LengthsType()),
-                "ms_avg_embs": NeuralType(('B', 'C', 'D', 'C'), EncodedRepresentation()),
+                "ms_avg_embs": NeuralType(
+                    ('B', 'C', 'D', 'C'), EncodedRepresentation()
+                ),
                 "targets": NeuralType(('B', 'T', 'C'), ProbsType()),
             }
         )
-        return output_types
 
     def __init__(
         self,
@@ -533,8 +528,7 @@ class _AudioMSDDInferDataset(Dataset):
         fr_level_target = assign_frame_level_spk_vector(
             rttm_timestamps, self.round_digits, self.frame_per_sec, sample.target_spks
         )
-        seg_target = self.get_diar_target_labels_from_fr_target(uniq_id, fr_level_target)
-        return seg_target
+        return self.get_diar_target_labels_from_fr_target(uniq_id, fr_level_target)
 
     def get_diar_target_labels_from_fr_target(self, uniq_id, fr_level_target):
         """
@@ -560,17 +554,15 @@ class _AudioMSDDInferDataset(Dataset):
         """
         if fr_level_target is None:
             return None
-        else:
-            seg_target_list = []
-            for (seg_stt, seg_end, label_int) in self.clus_label_dict[uniq_id]:
-                seg_stt_fr, seg_end_fr = int(seg_stt * self.frame_per_sec), int(seg_end * self.frame_per_sec)
-                soft_label_vec = torch.sum(fr_level_target[seg_stt_fr:seg_end_fr, :], axis=0) / (
-                    seg_end_fr - seg_stt_fr
-                )
-                label_vec = (soft_label_vec > self.soft_label_thres).int()
-                seg_target_list.append(label_vec)
-            seg_target = torch.stack(seg_target_list)
-            return seg_target
+        seg_target_list = []
+        for (seg_stt, seg_end, label_int) in self.clus_label_dict[uniq_id]:
+            seg_stt_fr, seg_end_fr = int(seg_stt * self.frame_per_sec), int(seg_end * self.frame_per_sec)
+            soft_label_vec = torch.sum(fr_level_target[seg_stt_fr:seg_end_fr, :], axis=0) / (
+                seg_end_fr - seg_stt_fr
+            )
+            label_vec = (soft_label_vec > self.soft_label_thres).int()
+            seg_target_list.append(label_vec)
+        return torch.stack(seg_target_list)
 
     def __getitem__(self, index):
         sample = self.collection[index]
@@ -645,9 +637,9 @@ def _msdd_train_collate_fn(self, batch):
         [],
     )
 
-    max_raw_feat_len = max([x.shape[0] for x in features])
-    max_target_len = max([x.shape[0] for x in targets])
-    max_total_seg_len = max([x.shape[0] for x in clus_label_index])
+    max_raw_feat_len = max(x.shape[0] for x in features)
+    max_target_len = max(x.shape[0] for x in targets)
+    max_total_seg_len = max(x.shape[0] for x in clus_label_index)
 
     for feat, feat_len, ms_seg_ts, ms_seg_ct, scale_clus, scl_map, tgt in batch:
         seq_len = tgt.shape[0]
@@ -702,7 +694,7 @@ def _msdd_infer_collate_fn(self, batch):
     feats, feats_len, targets, ms_avg_embs = packed_batch
     feats_list, flen_list, targets_list, ms_avg_embs_list = [], [], [], []
     max_audio_len = max(feats_len)
-    max_target_len = max([x.shape[0] for x in targets])
+    max_target_len = max(x.shape[0] for x in targets)
 
     for feature, feat_len, target, ivector in batch:
         flen_list.append(feat_len)

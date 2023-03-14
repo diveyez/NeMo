@@ -38,54 +38,52 @@ Args:
 
 def get_acc(trial_file='', emb='', save_kaldi_emb=False):
 
-    trial_score = open('trial_score.txt', 'w')
-    dirname = os.path.dirname(trial_file)
-    with open(emb, 'rb') as f:
-        emb = pkl.load(f)
-    trial_embs = []
-    keys = []
-    all_scores = []
-    all_keys = []
+    with open('trial_score.txt', 'w') as trial_score:
+        dirname = os.path.dirname(trial_file)
+        with open(emb, 'rb') as f:
+            emb = pkl.load(f)
+        trial_embs = []
+        keys = []
+        all_scores = []
+        all_keys = []
 
-    # for each trials in trial file
-    with open(trial_file, 'r') as f:
-        tmp_file = f.readlines()
-        for line in tqdm(tmp_file):
-            line = line.strip()
-            truth, x_speaker, y_speaker = line.split()
+        # for each trials in trial file
+        with open(trial_file, 'r') as f:
+            tmp_file = f.readlines()
+            for line in tqdm(tmp_file):
+                line = line.strip()
+                truth, x_speaker, y_speaker = line.split()
 
-            x_speaker = x_speaker.split('/')
-            x_speaker = '@'.join(x_speaker)
+                x_speaker = x_speaker.split('/')
+                x_speaker = '@'.join(x_speaker)
 
-            y_speaker = y_speaker.split('/')
-            y_speaker = '@'.join(y_speaker)
+                y_speaker = y_speaker.split('/')
+                y_speaker = '@'.join(y_speaker)
 
-            X = emb[x_speaker]
-            Y = emb[y_speaker]
+                X = emb[x_speaker]
+                Y = emb[y_speaker]
 
-            if save_kaldi_emb and x_speaker not in keys:
-                keys.append(x_speaker)
-                trial_embs.extend([X])
+                if save_kaldi_emb and x_speaker not in keys:
+                    keys.append(x_speaker)
+                    trial_embs.extend([X])
 
-            if save_kaldi_emb and y_speaker not in keys:
-                keys.append(y_speaker)
-                trial_embs.extend([Y])
+                if save_kaldi_emb and y_speaker not in keys:
+                    keys.append(y_speaker)
+                    trial_embs.extend([Y])
 
-            score = np.dot(X, Y) / ((np.dot(X, X) * np.dot(Y, Y)) ** 0.5)
-            score = (score + 1) / 2
+                score = np.dot(X, Y) / ((np.dot(X, X) * np.dot(Y, Y)) ** 0.5)
+                score = (score + 1) / 2
 
-            all_scores.append(score)
-            trial_score.write(str(score) + "\t" + truth)
-            truth = int(truth)
-            all_keys.append(truth)
+                all_scores.append(score)
+                trial_score.write(str(score) + "\t" + truth)
+                truth = int(truth)
+                all_keys.append(truth)
 
-            trial_score.write('\n')
-    trial_score.close()
-
+                trial_score.write('\n')
     if save_kaldi_emb:
-        np.save(dirname + '/all_embs_voxceleb.npy', np.asarray(trial_embs))
-        np.save(dirname + '/all_ids_voxceleb.npy', np.asarray(keys))
-        print("Saved KALDI PLDA related embeddings to {}".format(dirname))
+        np.save(f'{dirname}/all_embs_voxceleb.npy', np.asarray(trial_embs))
+        np.save(f'{dirname}/all_ids_voxceleb.npy', np.asarray(keys))
+        print(f"Saved KALDI PLDA related embeddings to {dirname}")
 
     return np.asarray(all_scores), np.asarray(all_keys)
 

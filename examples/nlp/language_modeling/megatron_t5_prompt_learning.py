@@ -51,12 +51,10 @@ def main(cfg) -> None:
     strategy = NLPDDPStrategy(no_ddp_communication_hook=True, find_unused_parameters=False,)
     if cfg.trainer.precision == 16:
         scaler = GradScaler(
-            init_scale=cfg.model.get('native_amp_init_scale', 2 ** 32),
+            init_scale=cfg.model.get('native_amp_init_scale', 2**32),
             growth_interval=cfg.model.get('native_amp_growth_interval', 1000),
             hysteresis=cfg.model.get('hysteresis', 2),
-            enabled=False
-            if cfg.model.pipeline_model_parallel_size > 1
-            else True,  # turn off the grad scale for pipeline parallel LM model
+            enabled=cfg.model.pipeline_model_parallel_size <= 1,
         )
         plugins.append(PipelineMixedPrecisionPlugin(precision=cfg.trainer.precision, device='cuda', scaler=scaler))
 

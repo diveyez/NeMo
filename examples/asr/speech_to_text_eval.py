@@ -159,15 +159,17 @@ def main(cfg: EvaluationConfig):
         metric_name = 'WER'
         metric_value = wer
 
-    if cfg.tolerance is not None:
-        if metric_value > cfg.tolerance:
-            raise ValueError(f"Got {metric_name} of {metric_value}, which was higher than tolerance={cfg.tolerance}")
-
-        logging.info(f'Got {metric_name} of {metric_value}. Tolerance was {cfg.tolerance}')
-    else:
+    if cfg.tolerance is None:
         logging.info(f'Got {metric_name} of {metric_value}')
 
-    logging.info(f'Dataset WER/CER ' + str(round(100 * wer, 2)) + "%/" + str(round(100 * cer, 2)) + "%")
+    elif metric_value > cfg.tolerance:
+        raise ValueError(f"Got {metric_name} of {metric_value}, which was higher than tolerance={cfg.tolerance}")
+
+    else:
+        logging.info(f'Got {metric_name} of {metric_value}. Tolerance was {cfg.tolerance}')
+    logging.info(
+        f'Dataset WER/CER {str(round(100 * wer, 2))}%/{str(round(100 * cer, 2))}%'
+    )
 
     # Inject the metric name and score into the config, and return the entire config
     with open_dict(cfg):

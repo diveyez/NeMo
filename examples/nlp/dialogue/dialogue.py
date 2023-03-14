@@ -67,7 +67,7 @@ def main(cfg: DictConfig) -> None:
 
     try:
         strategy = NLPDDPStrategy(no_ddp_communication_hook=True, find_unused_parameters=True,)
-    except (ImportError, ModuleNotFoundError):
+    except ImportError:
         strategy = None
 
     trainer = pl.Trainer(**cfg.trainer, strategy=strategy)
@@ -129,7 +129,7 @@ def main(cfg: DictConfig) -> None:
                 model.save_to(cfg.model.nemo_path)
             else:
                 updated_nemo_path = cfg.model.nemo_path.replace(".nemo", "_new.nemo")
-                logging.warning("nemo path exists, saving at {} instead".format(updated_nemo_path))
+                logging.warning(f"nemo path exists, saving at {updated_nemo_path} instead")
                 model.save_to(updated_nemo_path)
 
     else:

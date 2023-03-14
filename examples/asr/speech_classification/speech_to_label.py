@@ -171,11 +171,14 @@ def main(cfg):
     trainer.fit(model)
     torch.distributed.destroy_process_group()
 
-    if hasattr(cfg.model, 'test_ds') and cfg.model.test_ds.manifest_filepath is not None:
-        if trainer.is_global_zero:
-            trainer = pl.Trainer(devices=1, accelerator=cfg.trainer.accelerator, strategy=cfg.trainer.strategy)
-            if model.prepare_test(trainer):
-                trainer.test(model)
+    if (
+        hasattr(cfg.model, 'test_ds')
+        and cfg.model.test_ds.manifest_filepath is not None
+        and trainer.is_global_zero
+    ):
+        trainer = pl.Trainer(devices=1, accelerator=cfg.trainer.accelerator, strategy=cfg.trainer.strategy)
+        if model.prepare_test(trainer):
+            trainer.test(model)
 
 
 if __name__ == '__main__':

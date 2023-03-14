@@ -16,6 +16,7 @@
 """
 This script can be used to construct a vocabulary of multiple references
 """
+
 from argparse import ArgumentParser
 from collections import Counter
 from os import listdir
@@ -30,11 +31,13 @@ args = parser.parse_args()
 if __name__ == "__main__":
 
     vcb = {}
-    filenames = []
-    for fn in listdir(args.data_dir + "/train"):
-        filenames.append(args.data_dir + "/train/" + fn)
-    for fn in listdir(args.data_dir + "/dev"):
-        filenames.append(args.data_dir + "/dev/" + fn)
+    filenames = [
+        f"{args.data_dir}/train/{fn}"
+        for fn in listdir(f"{args.data_dir}/train")
+    ]
+    filenames.extend(
+        f"{args.data_dir}/dev/{fn}" for fn in listdir(f"{args.data_dir}/dev")
+    )
     for fn in filenames:
         print("Processing ", fn)
         with open(fn, "r", encoding="utf-8") as f:
@@ -43,7 +46,7 @@ if __name__ == "__main__":
                 if len(parts) < 3:
                     continue
                 if len(parts) != 3:
-                    raise ValueError("Expect 3 parts, got " + str(len(parts)))
+                    raise ValueError(f"Expect 3 parts, got {len(parts)}")
                 semiotic_class, written, spoken = parts[0], parts[1].strip().casefold(), parts[2].strip().casefold()
                 spoken = spoken_preprocessing(spoken)
                 if spoken == "<self>":

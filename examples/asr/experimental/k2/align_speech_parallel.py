@@ -182,7 +182,7 @@ def main(cfg: ParallelAlignmentConfig):
 
     samples_num = 0
     if is_global_rank_zero():
-        output_file = os.path.join(cfg.output_path, f"predictions_all.json")
+        output_file = os.path.join(cfg.output_path, "predictions_all.json")
         logging.info(f"Prediction files are being aggregated in {output_file}.")
         with open(output_file, 'tw', encoding="utf-8") as outf:
             for rank in range(trainer.world_size):

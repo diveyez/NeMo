@@ -17,6 +17,7 @@
 This script can be used to get label vocab from train and dev labeled files.
 """
 
+
 import sys
 from argparse import ArgumentParser
 from collections import Counter
@@ -35,16 +36,16 @@ for fn in [args.train_filename, args.dev_filename]:
         for line in f:
             parts = line.strip().split("\t")
             if len(parts) < 2:
-                print("Warning: bad format in line: " + str(n) + ": " + line, file=sys.stderr)
+                print(f"Warning: bad format in line: {str(n)}: {line}", file=sys.stderr)
                 continue
             tags = parts[1].split(" ")
             for t in tags:
-                if t == "<SELF>":
-                    vocab["KEEP"] += 1
-                elif t == "<DELETE>":
+                if t == "<DELETE>":
                     vocab["DELETE"] += 1
+                elif t == "<SELF>":
+                    vocab["KEEP"] += 1
                 else:
-                    vocab["DELETE|" + t] += 1
+                    vocab[f"DELETE|{t}"] += 1
             n += 1
 
 print("len(vocab)=", len(vocab))
