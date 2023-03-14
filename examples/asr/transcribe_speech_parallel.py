@@ -163,11 +163,11 @@ def main(cfg: ParallelTranscriptionConfig):
         torch.distributed.barrier()
 
     samples_num = 0
-    pred_text_list = []
-    text_list = []
     if is_global_rank_zero():
-        output_file = os.path.join(cfg.output_path, f"predictions_all.json")
+        output_file = os.path.join(cfg.output_path, "predictions_all.json")
         logging.info(f"Prediction files are being aggregated in {output_file}.")
+        pred_text_list = []
+        text_list = []
         with open(output_file, 'w') as outf:
             for rank in range(trainer.world_size):
                 input_file = os.path.join(cfg.output_path, f"predictions_{rank}.json")

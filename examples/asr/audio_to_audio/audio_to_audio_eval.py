@@ -121,7 +121,7 @@ def get_metrics(cfg: AudioEvaluationConfig):
     """
     available_metrics = ['sdr', 'sisdr', 'stoi', 'estoi', 'pesq']
 
-    metrics = dict()
+    metrics = {}
     for name in sorted(set(cfg.metrics)):
         name = name.lower()
         if name == 'sdr':
@@ -247,7 +247,7 @@ def main(cfg: AudioEvaluationConfig):
             processed_signal, processed_length, target_signal, target_length = eval_batch
 
             if not torch.equal(processed_length, target_length):
-                raise RuntimeError(f'Length mismatch.')
+                raise RuntimeError('Length mismatch.')
 
             for name, metric in metrics.items():
                 metric.update(preds=processed_signal, target=target_signal, input_length=target_length)

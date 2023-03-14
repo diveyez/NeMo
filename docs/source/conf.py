@@ -71,9 +71,8 @@ for req_path in sorted(list(glob.glob("../../requirements/*.txt"))):
     with open(req_file, 'r') as f:
         for line in f:
             line = line.replace("\n", "")
-            req = re.search(r"([a-zA-Z0-9-_]*)", line)
-            if req:
-                req = req.group(1)
+            if req := re.search(r"([a-zA-Z0-9-_]*)", line):
+                req = req[1]
                 req = req.replace("-", "_")
 
                 if req not in autodoc_mock_imports:

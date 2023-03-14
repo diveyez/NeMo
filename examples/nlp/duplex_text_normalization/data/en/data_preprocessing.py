@@ -44,6 +44,7 @@ After this script, you can use upsample.py to create a more class balanced train
 """
 
 
+
 import os
 from argparse import ArgumentParser
 
@@ -63,7 +64,7 @@ from nemo.utils import logging
 engine = inflect.engine()
 
 # these are all words that can appear in a verbalized number, this list will be used later as a filter to detect numbers in verbalizations
-number_verbalizations = list(range(0, 20)) + list(range(20, 100, 10))
+number_verbalizations = list(range(20)) + list(range(20, 100, 10))
 number_verbalizations = (
     [engine.number_to_words(x, zero="zero").replace("-", " ").replace(",", "") for x in number_verbalizations]
     + ["hundred", "thousand", "million", "billion", "trillion"]
@@ -107,10 +108,7 @@ def process_url(o):
 
         o = ''
         for o_token in o_tokens:
-            if len(o_token) > 1:
-                o += ' ' + o_token + ' '
-            else:
-                o += o_token
+            o += f' {o_token} ' if len(o_token) > 1 else o_token
         o = o.strip()
         o_tokens = processor.tokenize(o).split()
         o = ' '.join(o_tokens)
@@ -188,7 +186,7 @@ def convert(example):
     # convert spoken forms for different classes
     if cls == "CARDINAL":
         if written[0] == "-":
-            digits = "minus " + convert2digits(written[1:])[0]
+            digits = f"minus {convert2digits(written[1:])[0]}"
         else:
             digits = convert2digits(written)[0]
         spoken = digits
@@ -210,9 +208,8 @@ def convert(example):
             elif x == ".":
                 res.append("point")
         spoken = " ".join(res)
-        m = re.search("([a-z]+)", written)
-        if m:
-            spoken += " " + m.group(1)
+        if m := re.search("([a-z]+)", written):
+            spoken += f" {m.group(1)}"
     elif cls == "FRACTION":
         res = []
         if written[0] == "-":
@@ -229,9 +226,9 @@ def convert(example):
             denominator = convert2digits(denominator)[0]
         else:
             denominator = engine.number_to_words(str(denominator), zero="zero").replace("-", " ").replace(",", "")
-        spoken = numerator + " slash " + denominator
+        spoken = f"{numerator} slash {denominator}"
         if res:
-            spoken = "minus " + spoken
+            spoken = f"minus {spoken}"
     elif cls == "MEASURE":
         res = []
         if written[0] == "-":
@@ -244,9 +241,9 @@ def convert(example):
             if x not in number_verbalizations:
                 break
 
-        spoken = number + " " + " ".join(s_words[i:])
+        spoken = f"{number} " + " ".join(s_words[i:])
         if res:
-            spoken = "minus " + spoken
+            spoken = f"minus {spoken}"
     elif cls == "MONEY":
         res = []
         if written[0] == "-":
@@ -262,9 +259,9 @@ def convert(example):
         for i, x in enumerate(s_words):
             if x not in number_verbalizations:
                 break
-        spoken = number + " " + " ".join(s_words[i:])
+        spoken = f"{number} " + " ".join(s_words[i:])
         if res:
-            spoken = "minus " + spoken
+            spoken = f"minus {spoken}"
     elif cls == "ORDINAL":
         res = []
         if written[0] == "-":
@@ -279,9 +276,9 @@ def convert(example):
         elif "st" in written.lower():
             idx = written.lower().index("st")
         if re.search(r"[¿¡ºª]", written) is None:
-            spoken = convert2digits(written[:idx].strip())[0] + " " + written[idx:].lower()
+            spoken = f"{convert2digits(written[:idx].strip())[0]} {written[idx:].lower()}"
         if res:
-            spoken = "minus " + spoken
+            spoken = f"minus {spoken}"
     example[2] = spoken
 
 
@@ -352,7 +349,7 @@ def process_file(fp):
         insts.append(inst)
 
     output_f = open(output_path, 'w+', encoding='utf-8')
-    for _, inst in enumerate(insts):
+    for inst in insts:
         cur_classes, cur_tokens, cur_outputs = inst
         for c, t, o in zip(cur_classes, cur_tokens, cur_outputs):
             output_f.write(f'{c}\t{t}\t{o}\n')

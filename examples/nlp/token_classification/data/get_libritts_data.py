@@ -85,20 +85,20 @@ if __name__ == "__main__":
 
     for subset in args.data_sets.split(','):
         logging.info(f'Downloading {subset} subset')
-        if __maybe_download_file(data_dir + f'/{subset}.tar.gz', subset):
+        if __maybe_download_file(f'{data_dir}/{subset}.tar.gz', subset):
             logging.info(f'Extracting {subset} subset')
-            __extract_file(data_dir + f'/{subset}.tar.gz', data_dir)
+            __extract_file(f'{data_dir}/{subset}.tar.gz', data_dir)
 
-    logging.info(f'Processing data')
+    logging.info('Processing data')
 
-    splits = set([split.split('_')[0] for split in args.data_sets.split(',')])
+    splits = {split.split('_')[0] for split in args.data_sets.split(',')}
     for split in splits:
         os.makedirs(f'{data_dir}/audio/{split}', exist_ok=True)
-        with open(f'{data_dir}/{split}.txt', 'w') as text_data, open(
-            f'{data_dir}/audio_{split}.txt', 'w'
-        ) as audio_data:
+        with (open(f'{data_dir}/{split}.txt', 'w') as text_data, open(
+                    f'{data_dir}/audio_{split}.txt', 'w'
+                ) as audio_data):
             for file in tqdm(glob.glob(f'{data_dir}/LibriTTS/{split}*/*/*/*.wav'), desc=f'Processing {split}'):
-                with open(file[:-4] + '.normalized.txt', 'r') as source_file:
+                with open(f'{file[:-4]}.normalized.txt', 'r') as source_file:
                     lines = source_file.readlines()
                     text = lines[0]
                     text = re.sub(r"[^a-zA-Z\d,?!.']", ' ', text)

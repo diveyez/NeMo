@@ -92,8 +92,6 @@ def main(cfg):
             pretraind_model = ASRModel.restore_from(
                 restore_path=pretrained_encoder_name, map_location=torch.device("cpu")
             )
-            model.encoder.load_state_dict(pretraind_model.encoder.state_dict(), strict=False)
-            del pretraind_model
         else:
             logging.info(f"Loading pretrained encoder from NGC: {pretrained_encoder_name}")
             if pretrained_encoder_name.startswith("ssl_"):
@@ -105,8 +103,8 @@ def main(cfg):
             pretraind_model = model_cls.from_pretrained(
                 model_name=pretrained_encoder_name, map_location=torch.device("cpu")
             )
-            model.encoder.load_state_dict(pretraind_model.encoder.state_dict(), strict=False)
-            del pretraind_model
+        model.encoder.load_state_dict(pretraind_model.encoder.state_dict(), strict=False)
+        del pretraind_model
     else:
         logging.info("Not using pretrained encoder.")
 
@@ -118,9 +116,12 @@ def main(cfg):
 
     trainer.fit(model)
 
-    if hasattr(cfg.model, 'test_ds') and cfg.model.test_ds.manifest_filepath is not None:
-        if model.prepare_test(trainer):
-            trainer.test(model)
+    if (
+        hasattr(cfg.model, 'test_ds')
+        and cfg.model.test_ds.manifest_filepath is not None
+        and model.prepare_test(trainer)
+    ):
+        trainer.test(model)
 
 
 if __name__ == '__main__':

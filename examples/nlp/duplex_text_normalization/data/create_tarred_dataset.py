@@ -145,7 +145,9 @@ def _write_batches_to_tarfiles(
             tar_file_ctr += 1
             tar_file_ptr.close()
             tar_file_path = os.path.join(
-                out_dir, f'%s-batches.%d.%d.%d.tar' % (file_name, batch_size, max_seq_len, tar_file_ctr)
+                out_dir,
+                '%s-batches.%d.%d.%d.tar'
+                % (file_name, batch_size, max_seq_len, tar_file_ctr),
             )
             tar_file_ptr = tarfile.open(tar_file_path, 'w',)
             batch_ctr = 0
@@ -200,8 +202,7 @@ if __name__ == '__main__':
 
     # check if tar files exist
     if os.path.exists(args.out_dir):
-        tar_files_in_out_dir = glob(f'{args.out_dir}/*.tar')
-        if tar_files_in_out_dir:
+        if tar_files_in_out_dir := glob(f'{args.out_dir}/*.tar'):
             raise ValueError(
                 f'Tar files detected in {args.out_dir}. Delete the files to re-construct the dataset in the same directory.'
             )
@@ -227,7 +228,7 @@ if __name__ == '__main__':
         for input_file in args.input_files
     )
 
-    total_batches = sum([batch_count for batch_count, _ in results_list])
+    total_batches = sum(batch_count for batch_count, _ in results_list)
 
     # save batches from tar files containing the left over batches (if there's enough batches)
     remainder_tar_file_ctr = 0
@@ -270,10 +271,6 @@ if __name__ == '__main__':
     total_batches -= num_batches_discarded
     logging.info(f'Number of batches discarded: {num_batches_discarded}, total batches kept: {total_batches}')
 
-    # dump metadata to json
-    metadata = {}
-    metadata['num_batches'] = total_batches
-
     # rename tar files so they can be more easily used with CLI and YAML
     file_name = f'{args.mode}.{args.batch_size}_bs.{args.num_batches_per_tarfile}_b_per_tar.{args.max_seq_length}_len'
     for index, path in enumerate(tar_file_paths):
@@ -281,8 +278,10 @@ if __name__ == '__main__':
 
     text_tar_filepaths = f'{file_name}._OP_0..{index}_CL_.tar'
     logging.info(f'Files for brace expansion: "{text_tar_filepaths}"')
-    metadata['text_tar_filepaths'] = text_tar_filepaths
-
+    metadata = {
+        'num_batches': total_batches,
+        'text_tar_filepaths': text_tar_filepaths,
+    }
     # add tar files to metadata
     tar_file_paths = glob(f'{args.out_dir}/*.tar')
     metadata['tar_files'] = tar_file_paths

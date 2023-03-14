@@ -48,8 +48,7 @@ def get_args():
         help="Reverse source and target language direction for parallel dataset",
     )
     parser.add_argument('--n_gpus', type=int, default=1, help="Number of GPUs to use")
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def translate(rank, world_size, args):

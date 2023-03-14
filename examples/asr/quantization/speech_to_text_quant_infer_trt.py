@@ -134,7 +134,7 @@ def get_min_max_input_shape(asr_model):
 
 
 def build_trt_engine(asr_model, onnx_path, qat):
-    trt_engine_path = "{}.trt".format(onnx_path)
+    trt_engine_path = f"{onnx_path}.trt"
     if os.path.exists(trt_engine_path):
         return trt_engine_path
 
@@ -164,7 +164,7 @@ def build_trt_engine(asr_model, onnx_path, qat):
 
 
 def trt_inference(stream, trt_ctx, d_input, d_output, input_signal, input_signal_length):
-    print("infer with shape: {}".format(input_signal.shape))
+    print(f"infer with shape: {input_signal.shape}")
 
     trt_ctx.set_binding_shape(0, input_signal.shape)
     assert trt_ctx.all_binding_shapes_specified
@@ -177,8 +177,7 @@ def trt_inference(stream, trt_ctx, d_input, d_output, input_signal, input_signal
     cuda.memcpy_dtoh_async(h_output, d_output, stream)
     stream.synchronize()
 
-    greedy_predictions = torch.tensor(h_output).argmax(dim=-1, keepdim=False)
-    return greedy_predictions
+    return torch.tensor(h_output).argmax(dim=-1, keepdim=False)
 
 
 def evaluate(asr_model, asr_onnx, labels_map, wer, qat):
@@ -188,12 +187,14 @@ def evaluate(asr_model, asr_onnx, labels_map, wer, qat):
     stream = cuda.Stream()
     vocabulary_size = len(labels_map) + 1
     engine_file_path = build_trt_engine(asr_model, asr_onnx, qat)
-    with open(engine_file_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime:
+    with (open(engine_file_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime):
         trt_engine = runtime.deserialize_cuda_engine(f.read())
         trt_ctx = trt_engine.create_execution_context()
 
         profile_shape = trt_engine.get_profile_shape(profile_index=0, binding=0)
-        print("profile shape min:{}, opt:{}, max:{}".format(profile_shape[0], profile_shape[1], profile_shape[2]))
+        print(
+            f"profile shape min:{profile_shape[0]}, opt:{profile_shape[1]}, max:{profile_shape[2]}"
+        )
         max_input_shape = profile_shape[2]
         input_nbytes = trt.volume(max_input_shape) * trt.float32.itemsize
         d_input = cuda.mem_alloc(input_nbytes)
@@ -220,7 +221,7 @@ def evaluate(asr_model, asr_onnx, labels_map, wer, qat):
             for batch_ind in range(greedy_predictions.shape[0]):
                 seq_len = test_batch[3][batch_ind].cpu().detach().numpy()
                 seq_ids = test_batch[2][batch_ind].cpu().detach().numpy()
-                reference = ''.join([labels_map[c] for c in seq_ids[0:seq_len]])
+                reference = ''.join([labels_map[c] for c in seq_ids[:seq_len]])
                 references.append(reference)
             del test_batch
         wer_value = word_error_rate(hypotheses=hypotheses, references=references, use_cer=wer.use_cer)

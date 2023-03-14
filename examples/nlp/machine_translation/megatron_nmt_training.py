@@ -81,7 +81,7 @@ def main(cfg) -> None:
 
     if hasattr(cfg.model, 'pretrained_model_path') and cfg.model.pretrained_model_path is not None:
         if not hasattr(cfg.model, 'pretrained_model_type'):
-            raise ValueError(f"Pretrained model type must be in [T5, BART].")
+            raise ValueError("Pretrained model type must be in [T5, BART].")
 
         assert cfg.model.pretrained_model_type in ['T5', 'BART']
         if cfg.model.pretrained_model_type == 'T5':

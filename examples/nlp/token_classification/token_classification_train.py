@@ -104,7 +104,7 @@ For more ways of restoring a pre-trained model, see tutorials/00_NeMo_Primer.ipy
 def main(cfg: DictConfig) -> None:
     try:
         strategy = NLPDDPStrategy()
-    except (ImportError, ModuleNotFoundError):
+    except ImportError:
         strategy = None
 
     trainer = pl.Trainer(strategy=strategy, **cfg.trainer)
@@ -124,8 +124,7 @@ def main(cfg: DictConfig) -> None:
                 f'Provide path to the pre-trained .nemo file or choose from {TokenClassificationModel.list_available_models()}'
             )
 
-        data_dir = cfg.model.dataset.get('data_dir', None)
-        if data_dir:
+        if data_dir := cfg.model.dataset.get('data_dir', None):
             if not os.path.exists(data_dir):
                 raise ValueError(f'{data_dir} is not found at')
 
@@ -138,7 +137,7 @@ def main(cfg: DictConfig) -> None:
             # then we're setting up loss, use model.dataset.class_balancing,
             # if you want to add class weights to the CrossEntropyLoss
             model.setup_loss(class_balancing=cfg.model.dataset.class_balancing)
-            logging.info(f'Using config file of the pretrained model')
+            logging.info('Using config file of the pretrained model')
         else:
             raise ValueError(
                 'Specify a valid dataset directory that contains test_ds.text_file and test_ds.labels_file \

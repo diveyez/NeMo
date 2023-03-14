@@ -61,18 +61,17 @@ def instantiate_model_and_trainer(
         model = ThutmoseTaggerModel.restore_from(pretrained_cfg)
     else:
         logging.info(f"Loading pretrained model {pretrained_cfg}")
-        if model_name == ITN_MODEL:
-            if pretrained_cfg not in ThutmoseTaggerModel.get_available_model_names():
-                raise (
-                    ValueError(
-                        f"{pretrained_cfg} not in the list of available Tagger models."
-                        f"Select from {ThutmoseTaggerModel.list_available_models()}"
-                    )
-                )
-            model = ThutmoseTaggerModel.from_pretrained(pretrained_cfg)
-        else:
+        if model_name != ITN_MODEL:
             raise ValueError(f"{model_name} is unknown model type")
 
+        if pretrained_cfg not in ThutmoseTaggerModel.get_available_model_names():
+            raise (
+                ValueError(
+                    f"{pretrained_cfg} not in the list of available Tagger models."
+                    f"Select from {ThutmoseTaggerModel.list_available_models()}"
+                )
+            )
+        model = ThutmoseTaggerModel.from_pretrained(pretrained_cfg)
     # Setup train and validation data
     if do_training:
         model.setup_training_data(train_data_config=cfg.data.train_ds)

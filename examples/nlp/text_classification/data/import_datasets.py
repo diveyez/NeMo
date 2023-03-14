@@ -52,12 +52,9 @@ def process_imdb(infold, outfold, uncased, modes=['train', 'test']):
 
     outfiles = {}
     for mode in modes:
-        outfiles[mode] = open(os.path.join(outfold, mode + '.tsv'), 'w')
+        outfiles[mode] = open(os.path.join(outfold, f'{mode}.tsv'), 'w')
         for sent in ['neg', 'pos']:
-            if sent == 'neg':
-                label = 0
-            else:
-                label = 1
+            label = 0 if sent == 'neg' else 1
             files = glob.glob(f'{infold}/{mode}/{sent}/*.txt')
             for file in files:
                 with open(file, 'r') as f:
@@ -70,9 +67,8 @@ def process_imdb(infold, outfold, uncased, modes=['train', 'test']):
     for mode in modes:
         outfiles[mode].close()
 
-    class_labels_file = open(os.path.join(outfold, 'label_ids.tsv'), 'w')
-    class_labels_file.write('negative\npositive\n')
-    class_labels_file.close()
+    with open(os.path.join(outfold, 'label_ids.tsv'), 'w') as class_labels_file:
+        class_labels_file.write('negative\npositive\n')
 
 
 def process_sst2(infold, outfold, uncased, splits=['train', 'dev']):
@@ -85,7 +81,7 @@ def process_sst2(infold, outfold, uncased, splits=['train', 'dev']):
             f'extract it into the folder specified by `source_data_dir` argument.'
         )
 
-    logging.info(f'Processing SST-2 dataset')
+    logging.info('Processing SST-2 dataset')
     os.makedirs(outfold, exist_ok=True)
 
     def _read_tsv(input_file, quotechar=None):
@@ -99,27 +95,20 @@ def process_sst2(infold, outfold, uncased, splits=['train', 'dev']):
 
     for split in splits:
         # Load input file.
-        input_file = os.path.join(infold, split + '.tsv')
+        input_file = os.path.join(infold, f'{split}.tsv')
         lines = _read_tsv(input_file)
-        # Create output.
-        outfile = open(os.path.join(outfold, split + '.tsv'), 'w')
-
-        # Copy lines, skip the header (line 0).
-        for line in lines[1:]:
-            text = line[0]
-            label = line[1]
-            # Lowercase when required.
-            if uncased:
-                text = text.lower()
-            # Write output.
-            outfile.write(f'{text}\t{label}\n')
-        # Close file.
-        outfile.close()
-
-    class_labels_file = open(os.path.join(outfold, 'label_ids.tsv'), 'w')
-    class_labels_file.write('negative\npositive\n')
-    class_labels_file.close()
-
+        with open(os.path.join(outfold, f'{split}.tsv'), 'w') as outfile:
+            # Copy lines, skip the header (line 0).
+            for line in lines[1:]:
+                text = line[0]
+                label = line[1]
+                # Lowercase when required.
+                if uncased:
+                    text = text.lower()
+                # Write output.
+                outfile.write(f'{text}\t{label}\n')
+    with open(os.path.join(outfold, 'label_ids.tsv'), 'w') as class_labels_file:
+        class_labels_file.write('negative\npositive\n')
     logging.info(f'Result stored at {outfold}')
 
 
@@ -144,26 +133,25 @@ def process_chemprot(source_dir, target_dir, uncased, modes=['train', 'test', 'd
 
     outfiles = {}
     label_mapping = {}
-    out_label_mapping = open(os.path.join(target_dir, 'label_mapping.tsv'), 'w')
-    for mode in modes:
-        outfiles[mode] = open(os.path.join(target_dir, mode + '.tsv'), 'w')
-        input_file = os.path.join(source_dir, naming_map[mode])
-        lines = _read_tsv(input_file)
-        for line in lines:
-            text = line[1]
-            label = line[2]
-            if label == "True":
-                label = line[3]
-            if uncased:
-                text = text.lower()
-            if label not in label_mapping:
-                out_label_mapping.write(f'{label}\t{len(label_mapping)}\n')
-                label_mapping[label] = len(label_mapping)
-            label = label_mapping[label]
-            outfiles[mode].write(f'{text}\t{label}\n')
-    for mode in modes:
-        outfiles[mode].close()
-    out_label_mapping.close()
+    with open(os.path.join(target_dir, 'label_mapping.tsv'), 'w') as out_label_mapping:
+        for mode in modes:
+            outfiles[mode] = open(os.path.join(target_dir, f'{mode}.tsv'), 'w')
+            input_file = os.path.join(source_dir, naming_map[mode])
+            lines = _read_tsv(input_file)
+            for line in lines:
+                text = line[1]
+                label = line[2]
+                if label == "True":
+                    label = line[3]
+                if uncased:
+                    text = text.lower()
+                if label not in label_mapping:
+                    out_label_mapping.write(f'{label}\t{len(label_mapping)}\n')
+                    label_mapping[label] = len(label_mapping)
+                label = label_mapping[label]
+                outfiles[mode].write(f'{text}\t{label}\n')
+        for mode in modes:
+            outfiles[mode].close()
 
 
 def process_thucnews(infold, outfold):
@@ -176,9 +164,12 @@ def process_thucnews(infold, outfold):
     logging.info(f'Processing THUCNews dataset and store at {outfold}')
     os.makedirs(outfold, exist_ok=True)
 
-    outfiles = {}
-    for mode in modes:
-        outfiles[mode] = open(os.path.join(outfold, mode + '.tsv'), 'a+', encoding='utf-8')
+    outfiles = {
+        mode: open(
+            os.path.join(outfold, f'{mode}.tsv'), 'a+', encoding='utf-8'
+        )
+        for mode in modes
+    }
     categories = ['体育', '娱乐', '家居', '彩票', '房产', '教育', '时尚', '时政', '星座', '游戏', '社会', '科技', '股票', '财经']
     for category in categories:
         label = categories.index(category)
@@ -189,11 +180,7 @@ def process_thucnews(infold, outfold):
 
         for mode in modes:
             logging.info(f'Processing {mode} data of the category {category}')
-            if mode == 'test':
-                files = test_files
-            else:
-                files = train_files
-
+            files = test_files if mode == 'test' else train_files
             if len(files) == 0:
                 logging.info(f'Skipping category {category} for {mode} mode')
                 continue
@@ -220,9 +207,9 @@ if __name__ == "__main__":
 
     dataset_name = args.dataset_name
     do_lower_case = args.do_lower_case
-    source_dir = args.source_data_dir
     target_dir = args.target_data_dir
 
+    source_dir = args.source_data_dir
     if not exists(source_dir):
         raise FileNotFoundError(f"{source_dir} does not exist.")
 
@@ -236,8 +223,5 @@ if __name__ == "__main__":
         process_sst2(source_dir, target_dir, do_lower_case)
     else:
         raise ValueError(
-            f'Dataset {dataset_name} is not supported.'
-            + "Please make sure that you build the preprocessing process for it. "
-            + "NeMo's format assumes that a data file has a header and each line of the file follows "
-            + "the format: text [TAB] label. Label is assumed to be an integer."
+            f"Dataset {dataset_name} is not supported.Please make sure that you build the preprocessing process for it. NeMo's format assumes that a data file has a header and each line of the file follows the format: text [TAB] label. Label is assumed to be an integer."
         )

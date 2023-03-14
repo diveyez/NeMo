@@ -33,9 +33,11 @@ def dump_json(filepath, data):
 def get_context_from_passages(passages, keep_only_relevant_passages):
     contexts = []
     if keep_only_relevant_passages:
-        for passage in passages:
-            if passage["is_selected"] == 1:
-                contexts.append(passage["passage_text"])
+        contexts.extend(
+            passage["passage_text"]
+            for passage in passages
+            if passage["is_selected"] == 1
+        )
     else:
         contexts = [passage["passage_text"] for passage in passages]
 
@@ -43,7 +45,7 @@ def get_context_from_passages(passages, keep_only_relevant_passages):
 
 
 def format_answers_into_squad_format(answers):
-    is_impossible = True if "No Answer Present." in answers else False
+    is_impossible = "No Answer Present." in answers
     if is_impossible:
         answers = []
     else:
@@ -68,19 +70,22 @@ def convert_msmarco_to_squad_format(msmarco_data, args):
         well_formed_answers = (
             well_formed_answers if isinstance(well_formed_answers, list) else literal_eval(well_formed_answers)
         )
-        answers = well_formed_answers if well_formed_answers else msmarco_data["answers"][_id]
+        answers = well_formed_answers or msmarco_data["answers"][_id]
         answers = format_answers_into_squad_format(answers)
-        if args.exclude_negative_samples and (not answers):
-            continue
-
-        squad_data["data"][0]["paragraphs"].append(
-            {
-                "context": context,
-                "qas": [
-                    {"id": index, "question": query, "answers": answers, "is_impossible": False if answers else True,}
-                ],
-            }
-        )
+        if not args.exclude_negative_samples or answers:
+            squad_data["data"][0]["paragraphs"].append(
+                {
+                    "context": context,
+                    "qas": [
+                        {
+                            "id": index,
+                            "question": query,
+                            "answers": answers,
+                            "is_impossible": not answers,
+                        }
+                    ],
+                }
+            )
 
     return squad_data
 

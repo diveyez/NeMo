@@ -97,7 +97,7 @@ def install_megatron_dependence():
 
     megatron_module.__dict__['model'] = model_module
 
-    sys.modules[megatron_name + '.' + model_name] = model_module
+    sys.modules[f'{megatron_name}.{model_name}'] = model_module
 
     enums_name = 'enums'
     enums_spec = importlib.util.spec_from_loader(enums_name, loader=None, is_package=True)
@@ -105,7 +105,7 @@ def install_megatron_dependence():
 
     model_module.__dict__['enums'] = enums_module
 
-    sys.modules[megatron_name + '.' + model_name + '.' + enums_name] = enums_module
+    sys.modules[f'{megatron_name}.{model_name}.{enums_name}'] = enums_module
 
     exec(enum_code, enums_module.__dict__)
 
@@ -149,8 +149,7 @@ def get_args():
 
     parser.add_argument("--model_type", type=str, required=True, default="gpt", choices=["gpt", "t5", "bert"])
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def parse_weights(weight_dict: OrderedDict, parent_key: str, total: list, converted: OrderedDict, translator: dict):
@@ -161,32 +160,36 @@ def parse_weights(weight_dict: OrderedDict, parent_key: str, total: list, conver
         for replace_key in name_translate:
             if key.find(replace_key) >= 0:
                 new_key = key.replace(replace_key, name_translate[replace_key])
-        if isinstance(weight_dict[key], OrderedDict) or isinstance(weight_dict[key], dict):
-            parse_weights(weight_dict[key], parent_key + '.' + new_key, total, converted, translator)
+        if isinstance(weight_dict[key], (OrderedDict, dict)):
+            parse_weights(
+                weight_dict[key],
+                f'{parent_key}.{new_key}',
+                total,
+                converted,
+                translator,
+            )
         else:
             num_parameters = torch.prod(torch.tensor(weight_dict[key].cpu().size())).item()
             total[0] += num_parameters
-            final_key = 'model' + parent_key + '.' + new_key
+            final_key = f'model{parent_key}.{new_key}'
             converted[final_key] = weight_dict[key]
 
 
 def add_optimizer_state(lm_checkpoint, new_checkpoint, megatron_amp_o2=True):
     # this method is to convert lm_checkpoint optimizer states for nemo checkpoint
     OPTIMIZER_KEY = 'optimizer'
-    FP32_FP16_KEY = 'fp32_from_fp16_params'
-    NEW_OPTIMIZER_KEY = 'optimizer_states'
     STEP_KEY = 'iteration'
-    NEW_STEP_KEY = 'global_step'
     LR_SCHEDULER = 'lr_scheduler'
-    NEW_LR_SCHEDULER = 'lr_schedulers'
     if OPTIMIZER_KEY in lm_checkpoint and OPTIMIZER_KEY in lm_checkpoint[OPTIMIZER_KEY]:
         opt_state = lm_checkpoint[OPTIMIZER_KEY][OPTIMIZER_KEY]
+        NEW_OPTIMIZER_KEY = 'optimizer_states'
         if megatron_amp_o2:
-            opt_dict = dict()
+            opt_dict = {}
             if LR_SCHEDULER in lm_checkpoint:
                 sched = lm_checkpoint[LR_SCHEDULER]
                 for param_group in opt_state['param_groups']:
                     param_group['initial_lr'] = sched['max_lr']
+            FP32_FP16_KEY = 'fp32_from_fp16_params'
             if FP32_FP16_KEY in lm_checkpoint[OPTIMIZER_KEY]:
                 fp32_state = lm_checkpoint[OPTIMIZER_KEY][FP32_FP16_KEY]
                 opt_dict[FP32_FP16_KEY] = fp32_state
@@ -196,6 +199,7 @@ def add_optimizer_state(lm_checkpoint, new_checkpoint, megatron_amp_o2=True):
             new_checkpoint[NEW_OPTIMIZER_KEY] = [opt_state]
 
     if STEP_KEY in lm_checkpoint:
+        NEW_STEP_KEY = 'global_step'
         new_checkpoint[NEW_STEP_KEY] = lm_checkpoint[STEP_KEY]
         new_checkpoint['epoch'] = 1  # always one epoch
     if LR_SCHEDULER in lm_checkpoint:
@@ -219,6 +223,7 @@ def add_optimizer_state(lm_checkpoint, new_checkpoint, megatron_amp_o2=True):
         content['_step_count'] = int(sched['num_steps']) // gbs
         content['verbose'] = False
         content['_get_lr_called_within_step'] = False
+        NEW_LR_SCHEDULER = 'lr_schedulers'
         new_checkpoint[NEW_LR_SCHEDULER] = [content]
 
 
@@ -323,14 +328,11 @@ def load_from_checkpoint(
                         if len(weight.size()) == 2:
                             # weight
                             weight = weight.view(np, -1, 3, weight.size()[-1])
-                            weight = weight.transpose(1, 2).contiguous()
-                            checkpoint['state_dict'][key] = weight
                         else:
                             # biase
                             weight = weight.view(np, -1, 3)
-                            weight = weight.transpose(1, 2).contiguous()
-                            checkpoint['state_dict'][key] = weight
-
+                        weight = weight.transpose(1, 2).contiguous()
+                        checkpoint['state_dict'][key] = weight
         # for past checkpoint need to add the new key
         if cls.CHECKPOINT_HYPER_PARAMS_KEY not in checkpoint:
             checkpoint[cls.CHECKPOINT_HYPER_PARAMS_KEY] = {}
@@ -341,12 +343,13 @@ def load_from_checkpoint(
             config_kwargs.pop('trainer')
         checkpoint[cls.CHECKPOINT_HYPER_PARAMS_KEY].update(config_kwargs)
         add_optimizer_state(old_checkpoint, checkpoint)
-        consumed = None
-        if 'args' in old_checkpoint and hasattr(old_checkpoint['args'], 'consumed_train_samples'):
-            consumed = getattr(old_checkpoint['args'], 'consumed_train_samples')
-        steps = None
-        if 'iteration' in old_checkpoint:
-            steps = old_checkpoint['iteration']
+        consumed = (
+            getattr(old_checkpoint['args'], 'consumed_train_samples')
+            if 'args' in old_checkpoint
+            and hasattr(old_checkpoint['args'], 'consumed_train_samples')
+            else None
+        )
+        steps = old_checkpoint['iteration'] if 'iteration' in old_checkpoint else None
     finally:
         cls._set_model_restore_state(is_being_restored=False)
     logging.warning(f"the checkpoint version is {check_point_version}")
@@ -370,9 +373,7 @@ def megatron_lm_inject_model_parallel_rank(filepath):
             filepath = f'{dirname}/mp_rank_{app_state.tensor_model_parallel_rank:02d}/{basename}'
         else:
             filepath = f'{dirname}/mp_rank_{app_state.tensor_model_parallel_rank:02d}_{app_state.pipeline_model_parallel_rank:03d}/{basename}'
-        return filepath
-    else:
-        return filepath
+    return filepath
 
 
 def convert(local_rank, rank, world_size, args):
@@ -406,11 +407,11 @@ def convert(local_rank, rank, world_size, args):
 
     if args.model_type == 'gpt':
         # this dictionary is used to rename the model parameters
-        name_translate = {}
-        name_translate['transformer'] = 'encoder'
-        name_translate['.attention.'] = '.self_attention.'
-        # nemo megatron doesn't have _for_head key
-        name_translate['word_embeddings_for_head'] = 'word_embeddings'
+        name_translate = {
+            'transformer': 'encoder',
+            '.attention.': '.self_attention.',
+            'word_embeddings_for_head': 'word_embeddings',
+        }
         checkpoint, consumed, steps, version = load_from_checkpoint(
             MegatronGPTModel,
             checkpoint_path,
@@ -421,11 +422,11 @@ def convert(local_rank, rank, world_size, args):
         )
     elif args.model_type == 'bert':
         # this dictionary is used to rename the model parameters
-        name_translate = {}
-        name_translate['transformer'] = 'encoder'
-        name_translate['.attention.'] = '.self_attention.'
-        # nemo megatron doesn't have _for_head key
-        name_translate['word_embeddings_for_head'] = 'word_embeddings'
+        name_translate = {
+            'transformer': 'encoder',
+            '.attention.': '.self_attention.',
+            'word_embeddings_for_head': 'word_embeddings',
+        }
         checkpoint, consumed, steps, version = load_from_checkpoint(
             MegatronBertModel,
             checkpoint_path,
@@ -435,7 +436,7 @@ def convert(local_rank, rank, world_size, args):
             strict=False,
         )
     else:
-        raise NotImplemented("{} is not supported".format(args.model_type))
+        raise NotImplemented(f"{args.model_type} is not supported")
 
     if torch.distributed.is_initialized():
         torch.distributed.barrier()
@@ -444,17 +445,11 @@ def convert(local_rank, rank, world_size, args):
         filepath = args.output_ckpt_file_path
         base_dir = pathlib.Path(filepath).parent
         filename_str = pathlib.Path(filepath).name
-        suffix = '.ckpt'
-        content = {}
-        if consumed is not None:
-            content['consumed'] = consumed
-        else:
-            content['consumed'] = 0
-        if steps is not None:
-            content['steps'] = steps
-        else:
-            content['steps'] = 0
-        filename = filename_str.format(**content) + suffix
+        content = {
+            'consumed': consumed if consumed is not None else 0,
+            'steps': steps if steps is not None else 0,
+        }
+        filename = f'{filename_str.format(**content)}.ckpt'
         checkpoint_path_output = inject_model_parallel_rank(os.path.join(base_dir, filename))
         trainer.training_type_plugin.checkpoint_io.save_checkpoint(checkpoint, checkpoint_path_output)
         logging.info(f'NeMo model checkpoint files saved to: {args.output_ckpt_file_path}')
@@ -465,7 +460,7 @@ def convert(local_rank, rank, world_size, args):
         elif args.model_type == 'bert':
             model = load_model(MegatronBertModel, checkpoint, strict=False, trainer=trainer)
         else:
-            raise NotImplemented("{} is not supported".format(args.model_type))
+            raise NotImplemented(f"{args.model_type} is not supported")
 
         # verify tensor parallel rank id and pipeline parallel rank id matches
         assert app_state.data_parallel_size == 1

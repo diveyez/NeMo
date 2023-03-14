@@ -71,8 +71,7 @@ def main(cfg: DictConfig) -> None:
         batch.append(s.strip())
         if len(batch) == batch_size or i == len(lines) - 1:
             outputs = model._infer(batch)
-            for x in outputs:
-                all_preds.append(x)
+            all_preds.extend(iter(outputs))
             batch = []
     if len(all_preds) != len(lines):
         raise ValueError(

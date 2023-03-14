@@ -110,7 +110,7 @@ def main(cfg: DictConfig) -> None:
     logging.info(f'\nConfig Params:\n{OmegaConf.to_yaml(cfg)}')
     try:
         strategy = NLPDDPStrategy()
-    except (ImportError, ModuleNotFoundError):
+    except ImportError:
         strategy = None
 
     trainer = pl.Trainer(strategy=strategy, **cfg.trainer)

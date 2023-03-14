@@ -78,7 +78,7 @@ def score_fusion(args, forward_scores, rev_scores, lm_scores, src_lens, tgt_lens
         score += args.target_lm_coef * lm_score
 
         if args.len_pen is not None:
-            score = score / (((5 + tgt_len) / 6) ** args.len_pen)
+            score /= ((5 + tgt_len) / 6) ** args.len_pen
 
         fused_scores.append(score)
 
@@ -179,10 +179,9 @@ def main():
     else:
         logging.info(f"Re-ranking from cached score file only: {args.cached_score_file}")
 
-    if args.cached_score_file is None:
-        if torch.cuda.is_available():
-            reverse_models = [model.cuda() for model in reverse_models]
-            lm_model = lm_model.cuda()
+    if args.cached_score_file is None and torch.cuda.is_available():
+        reverse_models = [model.cuda() for model in reverse_models]
+        lm_model = lm_model.cuda()
 
     src_text = []
     tgt_text = []
@@ -263,7 +262,7 @@ def main():
             for line in src_f:
                 src_text.append(line.strip().split('\t'))
                 if len(src_text) == args.beam_size:
-                    if not all([len(item) == 7 for item in src_text]):
+                    if any(len(item) != 7 for item in src_text):
                         raise IndexError(
                             "All lines did not contain exactly 5 fields. Format - src_txt \t tgt_text \t forward_score \t reverse_score \t lm_score \t src_len \t tgt_len"
                         )
@@ -287,10 +286,8 @@ def main():
 
     # Write scores file
     if args.write_scores:
-        with open(args.tgtout + '.scores', 'w') as tgt_f, open(args.srctext, 'r') as src_f:
-            src_lines = []
-            for line in src_f:
-                src_lines.append(line.strip().split('\t'))
+        with (open(f'{args.tgtout}.scores', 'w') as tgt_f, open(args.srctext, 'r') as src_f):
+            src_lines = [line.strip().split('\t') for line in src_f]
             if not (len(all_reverse_scores) == len(all_lm_scores) == len(all_forward_scores) == len(src_lines)):
                 raise ValueError(
                     f"Length of scores files do not match. {len(all_reverse_scores)} != {len(all_lm_scores)} != {len(all_forward_scores)} != {len(src_lines)}. This is most likely because --beam_size is set incorrectly. This needs to be set to the same value that was used to generate translations."

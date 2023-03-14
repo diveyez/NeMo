@@ -68,7 +68,7 @@ def count_occurence(manifest_file_id):
     Returns:
         count (Dict): Dict of wav files {'A' : 2, ..., 'S':10}
     """
-    count = dict()
+    count = {}
     for i in manifest_file_id:
         audio_filename = i.split("-sub")[0]
         count[audio_filename] = count.get(audio_filename, 0) + 1
@@ -84,10 +84,8 @@ def _speech_collate_fn(batch, pad_id):
                assumes the signals are 1d torch tensors (i.e. mono audio).
     """
     _, audio_lengths, _, tokens_lengths = zip(*batch)
-    max_audio_len = 0
     has_audio = audio_lengths[0] is not None
-    if has_audio:
-        max_audio_len = max(audio_lengths).item()
+    max_audio_len = max(audio_lengths).item() if has_audio else 0
     max_tokens_len = max(tokens_lengths).item()
 
     audio_signal, tokens = [], []
@@ -249,17 +247,16 @@ target_label_n, "offset": offset_in_sec_n}
         }
 
         if self.is_regression_task:
-            output_types.update(
-                {
-                    'targets': NeuralType(tuple('B'), RegressionValuesType()),
-                    'targets_length': NeuralType(tuple('B'), LengthsType()),
-                }
-            )
+            output_types |= {
+                'targets': NeuralType(tuple('B'), RegressionValuesType()),
+                'targets_length': NeuralType(tuple('B'), LengthsType()),
+            }
         else:
 
-            output_types.update(
-                {'label': NeuralType(tuple('B'), LabelsType()), 'label_length': NeuralType(tuple('B'), LengthsType()),}
-            )
+            output_types |= {
+                'label': NeuralType(tuple('B'), LabelsType()),
+                'label_length': NeuralType(tuple('B'), LengthsType()),
+            }
 
         return output_types
 
@@ -292,7 +289,7 @@ target_label_n, "offset": offset_in_sec_n}
         self.is_regression_task = is_regression_task
 
         if not is_regression_task:
-            self.labels = labels if labels else self.collection.uniq_labels
+            self.labels = labels or self.collection.uniq_labels
             self.num_classes = len(self.labels) if self.labels is not None else 1
             self.label2id, self.id2label = {}, {}
             self.id2occurrence, self.labels_occurrence = {}, []
@@ -307,7 +304,7 @@ target_label_n, "offset": offset_in_sec_n}
                 self.labels_occurrence = [self.id2occurrence[k] for k in sorted(self.id2occurrence)]
 
             for idx in range(len(self.labels[:5])):
-                logging.debug(" label id {} and its mapped label {}".format(idx, self.id2label[idx]))
+                logging.debug(f" label id {idx} and its mapped label {self.id2label[idx]}")
 
         else:
             self.labels = []
@@ -327,11 +324,11 @@ target_label_n, "offset": offset_in_sec_n}
         features = self.featurizer.process(sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim)
         f, fl = features, torch.tensor(features.shape[0]).long()
 
-        if not self.is_regression_task:
-            t = torch.tensor(self.label2id[sample.label]).long()
-        else:
-            t = torch.tensor(sample.label).float()
-
+        t = (
+            torch.tensor(sample.label).float()
+            if self.is_regression_task
+            else torch.tensor(self.label2id[sample.label]).long()
+        )
         tl = torch.tensor(1).long()  # For compatibility with collate_fn used later
 
         return f, fl, t, tl
@@ -422,8 +419,12 @@ class AudioToSpeechLabelDataset(_AudioLabelDataset):
         self.shift_length_in_sec = shift_length_in_sec
         self.normalize_audio = normalize_audio
 
-        logging.debug("Window/slice length considered for collate func is {}".format(self.window_length_in_sec))
-        logging.debug("Shift length considered for collate func is {}".format(self.shift_length_in_sec))
+        logging.debug(
+            f"Window/slice length considered for collate func is {self.window_length_in_sec}"
+        )
+        logging.debug(
+            f"Shift length considered for collate func is {self.shift_length_in_sec}"
+        )
 
         super().__init__(
             manifest_filepath=manifest_filepath,
@@ -549,7 +550,7 @@ class _TarredAudioLabelDataset(IterableDataset):
         self.featurizer = featurizer
         self.trim = trim
 
-        self.labels = labels if labels else self.collection.uniq_labels
+        self.labels = labels or self.collection.uniq_labels
         self.num_classes = len(self.labels)
 
         self.label2id, self.id2label = {}, {}
@@ -558,7 +559,7 @@ class _TarredAudioLabelDataset(IterableDataset):
             self.id2label[label_id] = label
 
         for idx in range(len(self.labels[:5])):
-            logging.debug(" label id {} and its mapped label {}".format(idx, self.id2label[idx]))
+            logging.debug(f" label id {idx} and its mapped label {self.id2label[idx]}")
 
         audio_tar_filepaths = expand_audio_filepaths(
             audio_tar_filepaths=audio_tar_filepaths,
@@ -588,6 +589,8 @@ class _TarredAudioLabelDataset(IterableDataset):
         Note that if using multi-GPU training, filtering may lead to an imbalance in samples in each shard,
         which may make your code hang as one process will finish before the other.
         """
+
+
 
         class TarredAudioFilter:
             def __init__(self, collection, file_occurence):
@@ -623,12 +626,10 @@ class _TarredAudioLabelDataset(IterableDataset):
 
                     file_id, _ = os.path.splitext(os.path.basename(audio_filename))
                     if audio_filename in self.file_occurence:
-                        for j in range(0, self.file_occurence[file_id]):
-                            if j == 0:
-                                audio_filename = file_id
-                            else:
-                                audio_filename = file_id + "-sub" + str(j)
+                        for j in range(self.file_occurence[file_id]):
+                            audio_filename = file_id if j == 0 else f"{file_id}-sub{str(j)}"
                             yield audio_bytes, audio_filename
+
 
         return TarredAudioFilter(self.collection, self.file_occurence)
 
@@ -832,8 +833,12 @@ class TarredAudioToSpeechLabelDataset(_TarredAudioLabelDataset):
         global_rank: int = 0,
         world_size: int = 0,
     ):
-        logging.info("Window/slice length considered for collate func is {}".format(window_length_in_sec))
-        logging.info("Shift length considered for collate func is {}".format(shift_length_in_sec))
+        logging.info(
+            f"Window/slice length considered for collate func is {window_length_in_sec}"
+        )
+        logging.info(
+            f"Shift length considered for collate func is {shift_length_in_sec}"
+        )
         self.window_length_in_sec = window_length_in_sec
         self.shift_length_in_sec = shift_length_in_sec
         self.normalize_audio = normalize_audio

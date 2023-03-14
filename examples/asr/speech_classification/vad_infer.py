@@ -57,7 +57,7 @@ def main(cfg):
     # each line of dataset should be have different audio_filepath and unique name to simplify edge cases or conditions
     key_meta_map = {}
     with open(cfg.dataset, 'r') as manifest:
-        for line in manifest.readlines():
+        for line in manifest:
             audio_filepath = json.loads(line.strip())['audio_filepath']
             uniq_audio_name = audio_filepath.split('/')[-1].rsplit('.', 1)[0]
             if uniq_audio_name in key_meta_map:
@@ -160,12 +160,9 @@ def main(cfg):
 
     if cfg.write_to_manifest:
         for i in key_meta_map:
-            key_meta_map[i]['rttm_filepath'] = os.path.join(table_out_dir, i + ".txt")
+            key_meta_map[i]['rttm_filepath'] = os.path.join(table_out_dir, f"{i}.txt")
 
-        if not cfg.out_manifest_filepath:
-            out_manifest_filepath = "vad_out.json"
-        else:
-            out_manifest_filepath = cfg.out_manifest_filepath
+        out_manifest_filepath = cfg.out_manifest_filepath or "vad_out.json"
         out_manifest_filepath = write_rttm2manifest(key_meta_map, out_manifest_filepath)
         logging.info(f"Writing VAD output to manifest: {out_manifest_filepath}")
 

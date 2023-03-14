@@ -17,6 +17,7 @@
 This script can be used to sample each label from the labeled files.
 """
 
+
 import sys
 from argparse import ArgumentParser
 from collections import Counter
@@ -29,30 +30,31 @@ args = parser.parse_args()
 
 vocab = Counter()
 
-out_sample = open(args.filename + ".sample_" + str(args.max_count), "w", encoding="utf-8")
-out_rest = open(args.filename + ".rest_" + str(args.max_count), "w", encoding="utf-8")
+with open(f"{args.filename}.sample_{str(args.max_count)}", "w", encoding="utf-8") as out_sample:
+    out_rest = open(
+        f"{args.filename}.rest_{str(args.max_count)}", "w", encoding="utf-8"
+    )
 
-n = 0
-with open(args.filename, "r", encoding="utf-8") as f:
-    for line in f:
-        parts = line.strip().split("\t")
-        if len(parts) < 2:
-            print("Warning: bad format in line: " + str(n) + ": " + line, file=sys.stderr)
-            continue
+    n = 0
+    with open(args.filename, "r", encoding="utf-8") as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            if len(parts) < 2:
+                print(f"Warning: bad format in line: {str(n)}: {line}", file=sys.stderr)
+                continue
 
-        tags = parts[1].split(" ")
-        ok = False
-        for t in tags:
-            if t not in vocab:
-                vocab[t] = 0
-            if vocab[t] < args.max_count:
-                ok = True
-                vocab[t] += 1
-        if ok:
-            out_sample.write(line)
-        else:
-            out_rest.write(line)
-        n += 1
+            tags = parts[1].split(" ")
+            ok = False
+            for t in tags:
+                if t not in vocab:
+                    vocab[t] = 0
+                if vocab[t] < args.max_count:
+                    ok = True
+                    vocab[t] += 1
+            if ok:
+                out_sample.write(line)
+            else:
+                out_rest.write(line)
+            n += 1
 
-out_sample.close()
 out_rest.close()

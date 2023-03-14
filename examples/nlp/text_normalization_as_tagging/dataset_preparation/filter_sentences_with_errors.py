@@ -42,23 +42,22 @@ def filter_file(inp_filename: str, out_filename: str, error_vcb: Set) -> None:
         out_filename: Name of output file in Google TN Dataset format.
         error_vcb: Set of tuples with erroneous conversion, e.g. ("CARDINAL", "two", "132")
     """
-    out = open(out_filename, "w", encoding="utf-8")
-    sent_lines = []
-    sent_is_ok = True
-    with open(inp_filename, "r", encoding="utf-8") as f:
-        for line in f:
-            sent_lines.append(line.strip())
-            if line.startswith("<eos>"):
-                if sent_is_ok and len(sent_lines) > 1:  # there should be at least one line except <eos>
-                    out.write("\n".join(sent_lines) + "\n")
-                sent_lines = []
-                sent_is_ok = True
-            else:
-                cls, written, spoken = line.strip().split("\t")
-                k = (cls, spoken.casefold(), written.casefold())
-                if k in error_vcb:
-                    sent_is_ok = False
-    out.close()
+    with open(out_filename, "w", encoding="utf-8") as out:
+        sent_lines = []
+        sent_is_ok = True
+        with open(inp_filename, "r", encoding="utf-8") as f:
+            for line in f:
+                sent_lines.append(line.strip())
+                if line.startswith("<eos>"):
+                    if sent_is_ok and len(sent_lines) > 1:  # there should be at least one line except <eos>
+                        out.write("\n".join(sent_lines) + "\n")
+                    sent_lines = []
+                    sent_is_ok = True
+                else:
+                    cls, written, spoken = line.strip().split("\t")
+                    k = (cls, spoken.casefold(), written.casefold())
+                    if k in error_vcb:
+                        sent_is_ok = False
 
 
 def main() -> None:

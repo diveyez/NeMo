@@ -97,7 +97,9 @@ def main(cfg):
         device = 1
         accelerator = 'cpu'
 
-    map_location = torch.device('cuda:{}'.format(device[0]) if accelerator == 'gpu' else 'cpu')
+    map_location = torch.device(
+        f'cuda:{device[0]}' if accelerator == 'gpu' else 'cpu'
+    )
     trainer = pl.Trainer(devices=device, accelerator=accelerator, logger=False, enable_checkpointing=False)
 
     if os.path.exists(cfg.pretrained_model):
@@ -132,17 +134,17 @@ def main(cfg):
         save_errors = True
         correct = 0
         total = 0
-        with open(cfg.output_manifest, "r", encoding="utf-8") as f_preds, open(
-            cfg.errors_file, "w", encoding="utf-8"
-        ) as f_errors:
+        with (open(cfg.output_manifest, "r", encoding="utf-8") as f_preds, open(
+                    cfg.errors_file, "w", encoding="utf-8"
+                ) as f_errors):
             for line in f_preds:
                 line = json.loads(line)
-                predictions = line["pred_wordid"]
                 # run evaluation if target word_id is available in the input manifest
                 if "word_id" in line:
                     targets = line["word_id"]
                     if isinstance(targets, str):
                         targets = [targets]
+                    predictions = line["pred_wordid"]
                     for idx, target_ in enumerate(targets):
                         total += 1
                         if idx >= len(predictions) or target_ != predictions[idx]:

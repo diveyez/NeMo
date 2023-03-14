@@ -199,7 +199,7 @@ def get_args() -> argparse.Namespace:
 def load_manifest(manifest: Path) -> List[Dict[str, Union[str, float]]]:
     result = []
     with manifest.open() as f:
-        for i, line in enumerate(f):
+        for line in f:
             data = json.loads(line)
             result.append(data)
     return result
@@ -209,38 +209,37 @@ def main() -> None:
     args = get_args()
     if args.pretrained_name is None:
         model = (
-            PunctuationCapitalizationModel.restore_from(args.model_path)
-            if not args.use_audio
-            else PunctuationCapitalizationLexicalAudioModel.restore_from(args.model_path)
+            PunctuationCapitalizationLexicalAudioModel.restore_from(
+                args.model_path
+            )
+            if args.use_audio
+            else PunctuationCapitalizationModel.restore_from(args.model_path)
         )
     else:
         model = (
-            PunctuationCapitalizationModel.from_pretrained(args.pretrained_name)
-            if not args.use_audio
-            else PunctuationCapitalizationLexicalAudioModel.restore_from(args.model_path)
+            PunctuationCapitalizationLexicalAudioModel.restore_from(
+                args.model_path
+            )
+            if args.use_audio
+            else PunctuationCapitalizationModel.from_pretrained(
+                args.pretrained_name
+            )
         )
     if args.device is None:
-        if torch.cuda.is_available():
-            model = model.cuda()
-        else:
-            model = model.cpu()
+        model = model.cuda() if torch.cuda.is_available() else model.cpu()
     else:
         model = model.to(args.device)
+    texts = []
+    audios = []
     if args.input_manifest is None:
-        texts = []
-        audios = []
         with args.input_text.open() as f:
-            for line in f:
-                texts.append(line.strip())
+            texts.extend(line.strip() for line in f)
         if args.use_audio:
             with args.audio_file.open() as f:
-                for line in f:
-                    audios.append(line.strip())
+                audios.extend(line.strip() for line in f)
     else:
         manifest = load_manifest(args.input_manifest)
         text_key = "pred_text" if "pred_text" in manifest[0] else "text"
-        texts = []
-        audios = []
         for item in manifest:
             texts.append(item[text_key])
             if args.use_audio:

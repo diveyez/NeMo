@@ -206,12 +206,12 @@ def evaluate(asr_model, labels_map, wer):
         for batch_ind in range(greedy_predictions.shape[0]):
             seq_len = test_batch[3][batch_ind].cpu().detach().numpy()
             seq_ids = test_batch[2][batch_ind].cpu().detach().numpy()
-            reference = ''.join([labels_map[c] for c in seq_ids[0:seq_len]])
+            reference = ''.join([labels_map[c] for c in seq_ids[:seq_len]])
             references.append(reference)
         del test_batch
-    wer_value = word_error_rate(hypotheses=hypotheses, references=references, use_cer=wer.use_cer)
-
-    return wer_value
+    return word_error_rate(
+        hypotheses=hypotheses, references=references, use_cer=wer.use_cer
+    )
 
 
 if __name__ == '__main__':

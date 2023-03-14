@@ -80,8 +80,7 @@ def parse_arguments():
     parser.add_argument('--batch_size', type=int, default=32, help='Batchsize')
     parser.add_argument('--log', action='store_true', help='Log the predictions between pytorch and onnx')
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def assert_args(args):

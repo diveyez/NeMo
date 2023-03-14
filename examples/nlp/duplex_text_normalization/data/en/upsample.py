@@ -96,10 +96,10 @@ def include_sentence(sentence_patterns) -> bool:
     Returns:
         include: whether or not to use the sentence or for upsampling
     """
-    include = False
-    for k, v in sentence_patterns["MONEY"].items():
-        if v > 0 and k in MONEY_PATTERNS and MONEY_PATTERNS[k] < args.min_number:
-            include = True
+    include = any(
+        v > 0 and k in MONEY_PATTERNS and MONEY_PATTERNS[k] < args.min_number
+        for k, v in sentence_patterns["MONEY"].items()
+    )
     for k, v in sentence_patterns["MEASURE"].items():
         if v > 0 and k in MEASURE_PATTERNS and MEASURE_PATTERNS[k] < args.min_number:
             include = True
@@ -188,10 +188,9 @@ def read_data_file(fp: str, upsample_file: bool = False):
                 s_words.append(es[2])
                 if not upsample_file:
                     register_patterns(cls=es[0], input_str=es[1], pretty=args.pretty)
-                else:
-                    if es[0] in classes_to_upsample:
-                        patterns = lookup_patterns(cls=es[0], input_str=es[1])
-                        update_patterns(sentence_patterns[es[0]], patterns)
+                elif es[0] in classes_to_upsample:
+                    patterns = lookup_patterns(cls=es[0], input_str=es[1])
+                    update_patterns(sentence_patterns[es[0]], patterns)
         if not upsample_file:
             inst = (classes, w_words, s_words)
             insts.append(inst)
@@ -219,18 +218,18 @@ def register_patterns(cls: str, input_str: str, pretty: bool = False):
         input_str: input string
         pretty: used to pretty print patterns
     """
-    if cls == "MONEY":
-        new_dict = create_pattern(money_templates, input_str, pretty=pretty)
-        update_patterns(MONEY_PATTERNS, new_dict)
-    if cls == "MEASURE":
-        new_dict = create_pattern(measure_templates, input_str, pretty=pretty)
-        update_patterns(MEASURE_PATTERNS, new_dict)
-    if cls == "TIME":
-        new_dict = create_pattern(time_templates, input_str, pretty=pretty)
-        update_patterns(TIME_PATTERNS, new_dict)
     if cls == "FRACTION":
         new_dict = create_pattern(fraction_templates, input_str, pretty=pretty)
         update_patterns(FRACTION_PATTERNS, new_dict)
+    elif cls == "MEASURE":
+        new_dict = create_pattern(measure_templates, input_str, pretty=pretty)
+        update_patterns(MEASURE_PATTERNS, new_dict)
+    elif cls == "MONEY":
+        new_dict = create_pattern(money_templates, input_str, pretty=pretty)
+        update_patterns(MONEY_PATTERNS, new_dict)
+    elif cls == "TIME":
+        new_dict = create_pattern(time_templates, input_str, pretty=pretty)
+        update_patterns(TIME_PATTERNS, new_dict)
 
 
 def lookup_patterns(cls: str, input_str: str) -> dict:
@@ -241,14 +240,14 @@ def lookup_patterns(cls: str, input_str: str) -> dict:
         cls: class type of input_str
         input_str: input string
     """
-    if cls == "MONEY":
-        new_dict = create_pattern(MONEY_PATTERNS.keys(), input_str)
-    if cls == "MEASURE":
-        new_dict = create_pattern(MEASURE_PATTERNS.keys(), input_str)
-    if cls == "TIME":
-        new_dict = create_pattern(TIME_PATTERNS.keys(), input_str)
     if cls == "FRACTION":
         new_dict = create_pattern(FRACTION_PATTERNS.keys(), input_str)
+    elif cls == "MEASURE":
+        new_dict = create_pattern(MEASURE_PATTERNS.keys(), input_str)
+    elif cls == "MONEY":
+        new_dict = create_pattern(MONEY_PATTERNS.keys(), input_str)
+    elif cls == "TIME":
+        new_dict = create_pattern(TIME_PATTERNS.keys(), input_str)
     return new_dict
 
 
@@ -322,7 +321,7 @@ def main():
         print_stats()
 
     output_f = open(args.output_file, 'w+', encoding='utf-8')
-    for ix, inst in enumerate(inst_first_file):
+    for inst in inst_first_file:
         cur_classes, cur_tokens, cur_outputs = inst
         for c, t, o in zip(cur_classes, cur_tokens, cur_outputs):
             output_f.write(f'{c}\t{t}\t{o}\n')

@@ -58,7 +58,6 @@ def translate_text(
         best_translations = models[0].ids_to_postprocessed_text(
             best_translations, models[0].decoder_tokenizer, models[0].target_processor
         )
-        tgt_text += best_translations
     else:
         model = models[0]
         best_translations = model.translate(
@@ -87,8 +86,7 @@ def translate_text(
         else:
             best_translations = best_translations[0]
 
-        tgt_text += best_translations
-
+    tgt_text += best_translations
     print(f"Translated {len(tgt_text)} sentences")
 
 
@@ -285,7 +283,7 @@ def main():
             tgt_f.write(line + "\n")
 
     if args.write_scores:
-        with open(args.tgtout + '.score', 'w') as tgt_f_scores:
+        with open(f'{args.tgtout}.score', 'w') as tgt_f_scores:
             for line, score, inp in zip(tgt_text_all, all_scores, src_texts):
                 tgt_f_scores.write(inp + "\t" + line + "\t" + str(score) + "\n")
 
@@ -296,7 +294,7 @@ def main():
             for k in all_timing[0].keys():
                 timing_dict[k] = [t[k] for t in all_timing]
 
-        with open(args.tgtout + '.timing.json', 'w') as timing_fh:
+        with open(f'{args.tgtout}.timing.json', 'w') as timing_fh:
             json.dump(timing_dict, timing_fh)
 
 

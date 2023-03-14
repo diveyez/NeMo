@@ -36,6 +36,7 @@ The script generates:
     files (<output_file>.<semiotic_class>) with sentences, containing errors in this semiotic span.
 
 """
+
 import glob
 import os
 from argparse import ArgumentParser
@@ -51,18 +52,17 @@ args = parser.parse_args()
 if __name__ == '__main__':
 
     # delete all class-specific reports, as they are created in the append mode
-    for f in glob.glob(args.output_file + ".*"):
+    for f in glob.glob(f"{args.output_file}.*"):
         os.remove(f)
 
     total_count = Counter()
     correct_count = Counter()
 
-    f_ref = open(args.reference_file, "r", encoding="utf-8")
-    f_infer = open(args.inference_file, "r", encoding="utf-8")
-    f_out = open(args.output_file, "w", encoding="utf-8")
-    lines_ref = f_ref.readlines()
-    lines_infer = f_infer.readlines()
-    f_ref.close()
+    with open(args.reference_file, "r", encoding="utf-8") as f_ref:
+        f_infer = open(args.inference_file, "r", encoding="utf-8")
+        f_out = open(args.output_file, "w", encoding="utf-8")
+        lines_ref = f_ref.readlines()
+        lines_infer = f_infer.readlines()
     f_infer.close()
     if len(lines_ref) != len(lines_infer):
         raise ValueError(
@@ -78,16 +78,16 @@ if __name__ == '__main__':
         predicted_words = predicted_tags[:]
         for k in range(len(predicted_tags)):
             t = predicted_tags[k]
-            if t == "<SELF>":
-                predicted_words[k] = input_words[k]
-            elif t == "<DELETE>":
+            if t == "<DELETE>":
                 predicted_words[k] = ""
+            elif t == "<SELF>":
+                predicted_words[k] = input_words[k]
             else:
                 predicted_words[k] = predicted_words[k].replace(">", "").replace("<", "")
 
         parts = lines_ref[i].strip().split("\t")
         if len(parts) < 2 or len(parts) > 3:
-            raise ValueError("Bad format: " + lines_ref[i])
+            raise ValueError(f"Bad format: {lines_ref[i]}")
         if len(parts) == 3:  # there are non-trivial semiotic spans
             spans = parts[2].split(";")
             for span in spans:
@@ -111,23 +111,21 @@ if __name__ == '__main__':
                         correct_count[sem] += 1
                         break
                 if not ok:
-                    out_sem = open(args.output_file + "." + sem, "a", encoding="utf-8")
-                    out_sem.write(
-                        "error: pred="
-                        + " ".join(predicted_words[begin:end])
-                        + "; inp="
-                        + input_span
-                        + "; ref="
-                        + span
-                        + "\n"
-                    )
-                    out_sem.write("\tinput=" + " ".join(input_words) + "\n")
-                    out_sem.write("\ttags=" + " ".join(predicted_tags) + "\n")
-                    out_sem.write("\tpred=" + " ".join(predicted_words) + "\n")
-                    out_sem.write("\tsemiotic=" + semiotic + "\n")
-                    out_sem.write("\tref=" + parts[1] + "\n")
-                    out_sem.close()
-
+                    with open(f"{args.output_file}.{sem}", "a", encoding="utf-8") as out_sem:
+                        out_sem.write(
+                            "error: pred="
+                            + " ".join(predicted_words[begin:end])
+                            + "; inp="
+                            + input_span
+                            + "; ref="
+                            + span
+                            + "\n"
+                        )
+                        out_sem.write("\tinput=" + " ".join(input_words) + "\n")
+                        out_sem.write("\ttags=" + " ".join(predicted_tags) + "\n")
+                        out_sem.write("\tpred=" + " ".join(predicted_words) + "\n")
+                        out_sem.write("\tsemiotic=" + semiotic + "\n")
+                        out_sem.write("\tref=" + parts[1] + "\n")
     f_out.write("class\ttotal\tcorrect\terrors\taccuracy\n")
     for sem in total_count:
         f_out.write(

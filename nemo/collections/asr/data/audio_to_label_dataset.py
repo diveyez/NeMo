@@ -28,7 +28,7 @@ def get_classification_label_dataset(featurizer, config: dict) -> audio_to_label
     Returns:
         An instance of AudioToClassificationLabelDataset.
     """
-    dataset = audio_to_label.AudioToClassificationLabelDataset(
+    return audio_to_label.AudioToClassificationLabelDataset(
         manifest_filepath=config['manifest_filepath'],
         labels=config['labels'],
         featurizer=featurizer,
@@ -38,7 +38,6 @@ def get_classification_label_dataset(featurizer, config: dict) -> audio_to_label
         is_regression_task=config.get('is_regression_task', False),
         cal_labels_occurrence=config.get('cal_labels_occurrence', False),
     )
-    return dataset
 
 
 def get_speech_label_dataset(featurizer, config: dict) -> audio_to_label.AudioToSpeechLabelDataset:
@@ -51,7 +50,7 @@ def get_speech_label_dataset(featurizer, config: dict) -> audio_to_label.AudioTo
     Returns:
         An instance of AudioToSpeechLabelDataset.
     """
-    dataset = audio_to_label.AudioToSpeechLabelDataset(
+    return audio_to_label.AudioToSpeechLabelDataset(
         manifest_filepath=config['manifest_filepath'],
         labels=config['labels'],
         featurizer=featurizer,
@@ -63,7 +62,6 @@ def get_speech_label_dataset(featurizer, config: dict) -> audio_to_label.AudioTo
         normalize_audio=config.get('normalize_audio', False),
         cal_labels_occurrence=config.get('cal_labels_occurrence', False),
     )
-    return dataset
 
 
 def get_tarred_classification_label_dataset(
@@ -88,11 +86,11 @@ def get_tarred_classification_label_dataset(
     tarred_audio_filepaths = convert_to_config_list(tarred_audio_filepaths)
     manifest_filepaths = convert_to_config_list(manifest_filepaths)
 
-    bucketing_weights = config.get('bucketing_weights', None)  # For upsampling buckets
+    bucketing_weights = config.get('bucketing_weights')
     if bucketing_weights:
-        for idx, weight in enumerate(bucketing_weights):
+        for weight in bucketing_weights:
             if not isinstance(weight, int) or weight <= 0:
-                raise ValueError(f"bucket weights must be positive integers")
+                raise ValueError("bucket weights must be positive integers")
 
     if len(manifest_filepaths) != len(tarred_audio_filepaths):
         raise ValueError(
@@ -133,9 +131,7 @@ def get_concat_tarred_speech_label_dataset(
     tarred_audio_filepaths = config['tarred_audio_filepaths']
     manifest_filepaths = config['manifest_filepath']
     datasets = []
-    for dataset_idx, (tarred_audio_filepath, manifest_filepath) in enumerate(
-        zip(tarred_audio_filepaths, manifest_filepaths)
-    ):
+    for tarred_audio_filepath, manifest_filepath in zip(tarred_audio_filepaths, manifest_filepaths):
         conf = copy.deepcopy(config)
         conf['manifest_filepath'] = manifest_filepath
         conf['tarred_audio_filepaths'] = tarred_audio_filepath
@@ -178,11 +174,11 @@ def get_tarred_speech_label_dataset(
     tarred_audio_filepaths = convert_to_config_list(tarred_audio_filepaths)
     manifest_filepaths = convert_to_config_list(manifest_filepaths)
 
-    bucketing_weights = config.get('bucketing_weights', None)  # For upsampling buckets
+    bucketing_weights = config.get('bucketing_weights')
     if bucketing_weights:
-        for idx, weight in enumerate(bucketing_weights):
+        for weight in bucketing_weights:
             if not isinstance(weight, int) or weight <= 0:
-                raise ValueError(f"bucket weights must be positive integers")
+                raise ValueError("bucket weights must be positive integers")
 
     if len(manifest_filepaths) != len(tarred_audio_filepaths):
         raise ValueError(

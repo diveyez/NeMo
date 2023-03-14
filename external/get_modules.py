@@ -42,7 +42,7 @@ def process_member(name, obj, module_list):
     if not issubclass(obj, nemo.core.Serialization):
         return
 
-    logging.info("  * Processing `{}`".format(str(obj)))
+    logging.info(f"  * Processing `{str(obj)}`")
 
     module_list.append(
         {
@@ -83,7 +83,7 @@ def main():
 
     # Get collections directory.
     colletions_dir = os.path.dirname(nemo.collections.__file__)
-    logging.info('Analysing collections in `{}`'.format(colletions_dir))
+    logging.info(f'Analysing collections in `{colletions_dir}`')
 
     # Generate list of NeMo collections - from the list of collection subfolders.
     collections = {}
@@ -93,20 +93,20 @@ def main():
             continue
         # Check if it is a directory.
         if os.path.isdir(os.path.join(colletions_dir, sub_dir)):
-            collections[sub_dir] = "nemo.collections." + sub_dir
+            collections[sub_dir] = f"nemo.collections.{sub_dir}"
 
     # Check the collection.
     if args.collection not in collections.keys():
-        logging.error("Coudn't process the incidated `{}` collection".format(args.collection))
+        logging.error(f"Coudn't process the incidated `{args.collection}` collection")
         logging.info(
-            "Please select one of the existing collections using `--collection [{}]`".format("|".join(collections))
+            f'Please select one of the existing collections using `--collection [{"|".join(collections)}]`'
         )
         exit(-1)
 
     # Load the collection specification.
     collection_spec = importlib.util.find_spec(collections[args.collection])
     if collection_spec is None:
-        logging.error("Failed to load the `{}` collection".format(val))
+        logging.error(f"Failed to load the `{val}` collection")
 
     # Import the module from the module specification.
     collection = importlib.util.module_from_spec(collection_spec)
@@ -114,7 +114,7 @@ def main():
 
     module_list = []
     # Iterate over the packages in the indicated collection.
-    logging.info("Analysing the `{}` collection".format(args.collection))
+    logging.info(f"Analysing the `{args.collection}` collection")
 
     try:  # Datasets in dataset folder
         logging.info("Analysing the 'data' package")
@@ -145,13 +145,17 @@ def main():
         logging.info("  * No losses found")
 
     # Add prefix - only for default name.
-    filename = args.filename if args.filename != "modules.json" else args.collection + "_" + args.filename
+    filename = (
+        args.filename
+        if args.filename != "modules.json"
+        else f"{args.collection}_{args.filename}"
+    )
     # Export to JSON.
     with open(filename, 'w', encoding='utf-8') as outfile:
         json.dump(module_list, outfile)
 
     logging.info(
-        'Finished analysis of the `{}` collection, results exported to `{}`.'.format(args.collection, filename)
+        f'Finished analysis of the `{args.collection}` collection, results exported to `{filename}`.'
     )
 
 

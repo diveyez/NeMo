@@ -90,7 +90,9 @@ def main(cfg):
             device = 1
             accelerator = 'cpu'
 
-        map_location = torch.device('cuda:{}'.format(device[0]) if accelerator == 'gpu' else 'cpu')
+        map_location = torch.device(
+            f'cuda:{device[0]}' if accelerator == 'gpu' else 'cpu'
+        )
         trainer = pl.Trainer(devices=device, accelerator=accelerator, logger=False, enable_checkpointing=False)
 
         if g2p_model is None:

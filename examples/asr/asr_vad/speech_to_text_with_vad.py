@@ -231,7 +231,7 @@ def extract_audio_features(manifest_filepath: str, cfg: DictConfig, record_fn: C
 
     has_feat = False
     with open(manifest_filepath, 'r', encoding='utf-8') as fin:
-        for line in fin.readlines():
+        for line in fin:
             item = json.loads(line.strip())
             manifest_data.append(item)
             file_list.append(Path(item['audio_filepath']).stem)
@@ -271,7 +271,7 @@ def extract_audio_features(manifest_filepath: str, cfg: DictConfig, record_fn: C
                 with record_fn("feat_extract_other"):
                     processed_signal = processed_signal.squeeze(0)[:, :processed_signal_length]
                     processed_signal = processed_signal.cpu()
-                    outpath = os.path.join(out_dir, file_list[i] + ".pt")
+                    outpath = os.path.join(out_dir, f"{file_list[i]}.pt")
                     outpath = str(Path(outpath).absolute())
                     torch.save(processed_signal, outpath)
                     manifest_data[i]["feature_file"] = outpath
@@ -360,7 +360,7 @@ def run_vad_inference(manifest_filepath: str, cfg: DictConfig, record_fn: Callab
     for key, val in vad_cfg.vad.parameters.postprocessing.items():
         if key == "use_rttm":
             continue
-        segment_dir_name = segment_dir_name + "-" + str(key) + str(val)
+        segment_dir_name = f"{segment_dir_name}-{str(key)}{str(val)}"
 
     segment_dir = Path(cfg.output_dir) / Path(segment_dir_name)
     if segment_dir.is_dir():
@@ -380,10 +380,10 @@ def run_vad_inference(manifest_filepath: str, cfg: DictConfig, record_fn: Callab
         logging.info(f"Time elapsed: {t1 - t0: .2f} seconds")
         logging.info("Finished generating RTTM files from VAD predictions.")
 
-    rttm_map = {}
-    for filepath in Path(segment_dir).glob("*.rttm"):
-        rttm_map[filepath.stem] = str(filepath.absolute())
-
+    rttm_map = {
+        filepath.stem: str(filepath.absolute())
+        for filepath in Path(segment_dir).glob("*.rttm")
+    }
     manifest_data = read_manifest(manifest_filepath)
     for i in range(len(manifest_data)):
         key = Path(manifest_data[i]["audio_filepath"]).stem
@@ -407,13 +407,13 @@ def generate_vad_frame_pred(
     Generate VAD frame level prediction and write to out_dir
     """
     time_unit = int(window_length_in_sec / shift_length_in_sec)
-    trunc = int(time_unit / 2)
+    trunc = time_unit // 2
     trunc_l = time_unit - trunc
     all_len = 0
 
     data = []
     with open(manifest_vad_input, 'r', encoding='utf-8') as fin:
-        for line in fin.readlines():
+        for line in fin:
             file = json.loads(line)['audio_filepath'].split("/")[-1]
             data.append(file.split(".wav")[0])
     logging.info(f"Inference on {len(data)} audio files/json lines!")
@@ -444,13 +444,13 @@ def generate_vad_frame_pred(
                         to_save = pred
 
                     all_len += len(to_save)
-                    outpath = os.path.join(out_dir, data[i] + ".frame")
+                    outpath = os.path.join(out_dir, f"{data[i]}.frame")
                     with open(outpath, "a", encoding='utf-8') as fout:
                         for f in range(len(to_save)):
                             fout.write('{0:0.4f}\n'.format(to_save[f]))
 
                     del test_batch
-                    if status[i] == 'end' or status[i] == 'single':
+                    if status[i] in ['end', 'single']:
                         all_len = 0
     return out_dir
 
@@ -458,13 +458,12 @@ def generate_vad_frame_pred(
 def init_asr_model(model_path: str) -> ASRModel:
     if model_path.endswith('.nemo'):
         logging.info(f"Using local ASR model from {model_path}")
-        asr_model = ASRModel.restore_from(restore_path=model_path)
+        return ASRModel.restore_from(restore_path=model_path)
     elif model_path.endswith('.ckpt'):
-        asr_model = ASRModel.load_from_checkpoint(checkpoint_path=model_path)
+        return ASRModel.load_from_checkpoint(checkpoint_path=model_path)
     else:
         logging.info(f"Using NGC ASR model {model_path}")
-        asr_model = ASRModel.from_pretrained(model_name=model_path)
-    return asr_model
+        return ASRModel.from_pretrained(model_name=model_path)
 
 
 def run_asr_inference(manifest_filepath, cfg, record_fn) -> str:
@@ -476,19 +475,20 @@ def run_asr_inference(manifest_filepath, cfg, record_fn) -> str:
 
     # Setup decoding strategy
     decode_function = None
-    if hasattr(asr_model, 'change_decoding_strategy'):
-        # Check if ctc or rnnt model
-        if hasattr(asr_model, 'joint'):  # RNNT model
-            cfg.rnnt_decoding.fused_batch_size = -1
-            cfg.rnnt_decoding.compute_langs = cfg.compute_langs
-            asr_model.change_decoding_strategy(cfg.rnnt_decoding)
-            decode_function = asr_model.decoding.rnnt_decoder_predictions_tensor
-        else:
-            asr_model.change_decoding_strategy(cfg.ctc_decoding)
-            decode_function = asr_model.decoding.ctc_decoder_predictions_tensor
-    else:
-        raise ValueError(f"Only support CTC or RNNT models that have `change_decoding_strategy()` implemented.")
+    if not hasattr(asr_model, 'change_decoding_strategy'):
+        raise ValueError(
+            "Only support CTC or RNNT models that have `change_decoding_strategy()` implemented."
+        )
 
+    # Check if ctc or rnnt model
+    if hasattr(asr_model, 'joint'):  # RNNT model
+        cfg.rnnt_decoding.fused_batch_size = -1
+        cfg.rnnt_decoding.compute_langs = cfg.compute_langs
+        asr_model.change_decoding_strategy(cfg.rnnt_decoding)
+        decode_function = asr_model.decoding.rnnt_decoder_predictions_tensor
+    else:
+        asr_model.change_decoding_strategy(cfg.ctc_decoding)
+        decode_function = asr_model.decoding.ctc_decoder_predictions_tensor
     # Compute output filename
     if cfg.output_filename is None:
         # create default output filename
@@ -548,11 +548,7 @@ def run_asr_inference(manifest_filepath, cfg, record_fn) -> str:
                         current_hypotheses, all_hyp = decode_function(logits, logits_len, return_hypotheses=False,)
 
                         hypotheses += current_hypotheses
-                        if all_hyp is not None:
-                            all_hypotheses += all_hyp
-                        else:
-                            all_hypotheses += current_hypotheses
-
+                        all_hypotheses += all_hyp if all_hyp is not None else current_hypotheses
                         del logits
                         del test_batch
     t1 = time.time()
@@ -580,13 +576,11 @@ def run_asr_inference(manifest_filepath, cfg, record_fn) -> str:
         logging.info(f"Number of hallucinated characters={len(chars)}")
         logging.info(f"Number of hallucinated words={len(words)}")
         logging.info(f"Concatenated predictions: {hypotheses}")
-        logging.info("-----------------------------------------")
     else:
         wer_score = word_error_rate(hypotheses=hypotheses, references=groundtruth)
         logging.info("-----------------------------------------")
         logging.info(f"WER={wer_score*100:.2f}")
-        logging.info("-----------------------------------------")
-
+    logging.info("-----------------------------------------")
     logging.info(f"ASR output saved at {cfg.output_filename}")
     return cfg.output_filename
 

@@ -156,9 +156,7 @@ class SLURPEvaluator:
                 "total": self.total,
             }
 
-        scores = dict()
-        scores["invalid"] = self.invalid
-        scores["total"] = self.total
+        scores = {"invalid": self.invalid, "total": self.total}
         self.update_scores_dict(scenario_results, scores, "scenario")
         self.update_scores_dict(action_results, scores, "action")
         self.update_scores_dict(intent_results, scores, "intent")

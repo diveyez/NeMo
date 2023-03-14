@@ -102,11 +102,11 @@ if __name__ == '__main__':
     # Create the output dir (if not exist)
     if not isdir(args.output_dir):
         mkdir(args.output_dir)
-        mkdir(args.output_dir + '/train')
-        mkdir(args.output_dir + '/dev')
-        mkdir(args.output_dir + '/test')
+        mkdir(f'{args.output_dir}/train')
+        mkdir(f'{args.output_dir}/dev')
+        mkdir(f'{args.output_dir}/test')
         if args.add_test_full:
-            mkdir(args.output_dir + '/test_full')
+            mkdir(f'{args.output_dir}/test_full')
 
     for fn in sorted(listdir(args.data_dir))[::-1]:
         fp = join(args.data_dir, fn)
